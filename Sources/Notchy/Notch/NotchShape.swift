@@ -1,5 +1,31 @@
 import SwiftUI
 
+/// The inner edge of the notch only (sides and bottom), without the part along the top of the
+/// screen: what faces the desktop. Used for the glow while audio plays.
+struct NotchOutline: Shape {
+    var topRadius: CGFloat
+    var bottomRadius: CGFloat
+
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get { AnimatablePair(topRadius, bottomRadius) }
+        set { topRadius = newValue.first; bottomRadius = newValue.second }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let t = min(topRadius, rect.width / 4)
+        let b = min(bottomRadius, (rect.width - 2 * t) / 2, rect.height - t)
+        var p = Path()
+        // Starts where the left flare meets the side, ends where the right one does.
+        p.move(to: CGPoint(x: rect.minX + t, y: rect.minY + t))
+        p.addLine(to: CGPoint(x: rect.minX + t, y: rect.maxY - b))
+        p.addQuadCurve(to: CGPoint(x: rect.minX + t + b, y: rect.maxY), control: CGPoint(x: rect.minX + t, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.maxX - t - b, y: rect.maxY))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX - t, y: rect.maxY - b), control: CGPoint(x: rect.maxX - t, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.maxX - t, y: rect.minY + t))
+        return p
+    }
+}
+
 /// The notch silhouette: flared top corners that melt into the menu bar and rounded bottom corners.
 struct NotchShape: Shape {
     var topRadius: CGFloat

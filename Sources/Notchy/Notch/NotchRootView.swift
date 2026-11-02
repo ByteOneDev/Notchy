@@ -118,10 +118,10 @@ struct AudioGlow: View {
     let color: Color
 
     var body: some View {
-        shape
-            .stroke(color, lineWidth: 1.5)
-            .shadow(color: color.opacity(0.9), radius: 3)
-            .shadow(color: color.opacity(0.6), radius: 9)
+        NotchOutline(topRadius: shape.topRadius, bottomRadius: shape.bottomRadius)
+            .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+            .shadow(color: color.opacity(0.95), radius: 4)
+            .shadow(color: color.opacity(0.65), radius: 12)
             .phaseAnimator([0.55, 1.0]) { content, phase in
                 content.opacity(phase)
             } animation: { _ in .easeInOut(duration: 1.8) }
