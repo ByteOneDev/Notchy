@@ -1,0 +1,7 @@
+"NSCameraUsageDescription" = "Notchy uses the camera for the Mirror feature.";
+"NSCalendarsFullAccessUsageDescription" = "Notchy shows your upcoming events in the notch.";
+"NSCalendarsUsageDescription" = "Notchy shows your upcoming events in the notch.";
+"NSAppleEventsUsageDescription" = "Notchy reads the current track from Spotify, Music and your browser to show it in the notch.";
+"NSBluetoothAlwaysUsageDescription" = "Notchy shows the connection and battery of your headphones.";
+"NSLocationWhenInUseUsageDescription" = "Notchy uses your location to show the local weather.";
+"NSLocationUsageDescription" = "Notchy uses your location to show the local weather.";
