@@ -34,6 +34,8 @@ final class PrivacyMonitor {
     private var timer: Timer?
     /// The Mirror uses the camera itself; don't announce that.
     var ignoreCamera = false
+    /// The voice-following teleprompter listens to the microphone itself.
+    var ignoreMicrophone = false
 
     func start() {
         cameraOn = Self.isCameraInUse()
@@ -53,7 +55,7 @@ final class PrivacyMonitor {
         }
         if mic != micOn {
             micOn = mic
-            if enabled { LiveActivityCenter.shared.show(.microphone(on: mic), duration: 2.5) }
+            if enabled, !ignoreMicrophone { LiveActivityCenter.shared.show(.microphone(on: mic), duration: 2.5) }
         }
     }
 

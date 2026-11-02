@@ -9,10 +9,22 @@ struct NotchRootView: View {
     @ObservedObject private var lock = LockScreenManager.shared
     @ObservedObject private var pomodoro = PomodoroTimer.shared
     @ObservedObject private var quickTimer = QuickTimer.shared
+    @ObservedObject private var agents = AgentHub.shared
+
+    static let tabBarHeight: CGFloat = 36
+    static let tabBarGap: CGFloat = 8
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Self.tabBarGap) {
             notch
+            if viewModel.isOpen {
+                PanelBar(viewModel: viewModel)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .offset(y: -14)).combined(with: .scale(scale: 0.9, anchor: .top))
+                            .animation(.notchOpen.delay(0.08)),
+                        removal: .opacity.animation(.easeOut(duration: 0.1))
+                    ))
+            }
             Spacer(minLength: 0)
         }
         .frame(width: NotchViewModel.canvasSize.width, height: NotchViewModel.canvasSize.height, alignment: .top)
@@ -46,7 +58,7 @@ struct NotchRootView: View {
 
     private var shape: NotchShape {
         viewModel.isOpen
-            ? NotchShape(topRadius: 12, bottomRadius: 30)
+            ? NotchShape(topRadius: 12, bottomRadius: 32)
             : NotchShape(topRadius: 6, bottomRadius: compact.bottomHeight > 0 ? 18 : 11)
     }
 
@@ -71,7 +83,7 @@ struct NotchRootView: View {
                 shape.stroke(Color.white.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
             }
         }
-        .shadow(color: .black.opacity(viewModel.isOpen ? 0.55 : 0), radius: 14, y: 6)
+        .shadow(color: .black.opacity(viewModel.isOpen ? 0.5 : 0), radius: 14, y: 6)
         .contentShape(shape)
         .onTapGesture {
             if !viewModel.isOpen { viewModel.open() }
@@ -89,5 +101,53 @@ struct NotchRootView: View {
         .animation(.notchOpen, value: viewModel.isOpen)
         .animation(.notchActivity, value: size)
         .onChange(of: size, initial: true) { _, newSize in viewModel.shapeSize = newSize }
+    }
+}
+
+/// The floating bar of panels under the open notch. The selected panel shows its name.
+struct PanelBar: View {
+    @ObservedObject var viewModel: NotchViewModel
+    @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var agents = AgentHub.shared
+    @Namespace private var selection
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(viewModel.availableTabs) { tab in
+                let selected = viewModel.tab == tab
+                Button {
+                    withAnimation(.snappy(duration: 0.28)) { viewModel.tab = tab }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 12, weight: .semibold))
+                            .overlay(alignment: .topTrailing) {
+                                if tab == .agents, !agents.pendingPermissions.isEmpty {
+                                    Circle().fill(Color.orange).frame(width: 6, height: 6).offset(x: 4, y: -3)
+                                }
+                            }
+                        if selected {
+                            Text(tab.title).font(.system(size: 12, weight: .semibold)).fixedSize()
+                        }
+                    }
+                    .foregroundStyle(.white.opacity(selected ? 1 : 0.6))
+                    .padding(.horizontal, selected ? 12 : 9)
+                    .frame(height: NotchRootView.tabBarHeight - 8)
+                    .background {
+                        if selected {
+                            Capsule().fill(Color.white.opacity(0.16))
+                                .matchedGeometryEffect(id: "selection", in: selection)
+                        }
+                    }
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .help(tab.title)
+            }
+        }
+        .padding(4)
+        .frame(height: NotchRootView.tabBarHeight)
+        .background(CapsuleBackground(appearance: settings.appearance))
+        .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
     }
 }

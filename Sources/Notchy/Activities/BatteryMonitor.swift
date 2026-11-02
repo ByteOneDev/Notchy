@@ -8,6 +8,8 @@ final class BatteryMonitor: ObservableObject {
     @Published private(set) var level: Int?
     @Published private(set) var isCharging = false
     @Published private(set) var isPluggedIn = false
+    /// Minutes until full, when macOS has estimated it.
+    @Published private(set) var minutesToFull: Int?
     private var warnedLevels = Set<Int>()
     private var runLoopSource: CFRunLoopSource?
 
@@ -33,24 +35,35 @@ final class BatteryMonitor: ObservableObject {
             let newLevel = max > 0 ? Int((Double(current) / Double(max) * 100).rounded()) : current
             let pluggedIn = description[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue
             let charging = description[kIOPSIsChargingKey] as? Bool ?? false
+            let toFull = description[kIOPSTimeToFullChargeKey] as? Int ?? -1
 
             let pluggedChanged = pluggedIn != isPluggedIn
             level = newLevel
             isCharging = charging || (pluggedIn && newLevel >= 100)
             isPluggedIn = pluggedIn
+            minutesToFull = charging && toFull > 0 ? toFull : nil
 
             guard announce, AppSettings.shared.batteryActivity else { return }
+            let center = LiveActivityCenter.shared
             if pluggedChanged {
                 warnedLevels.removeAll()
-                LiveActivityCenter.shared.show(.battery(level: newLevel, charging: pluggedIn), duration: 2.5)
+                center.show(.battery(level: newLevel, charging: pluggedIn, minutesToFull: minutesToFull), duration: 3.5)
+            } else if center.current?.kind.group == "battery", pluggedIn {
+                // The estimate usually arrives a moment after plugging in.
+                center.show(.battery(level: newLevel, charging: true, minutesToFull: minutesToFull), duration: 3)
             } else if !pluggedIn {
                 for threshold in [20, 10, 5] where newLevel <= threshold && !warnedLevels.contains(threshold) {
                     warnedLevels.formUnion([20, 10, 5].filter { $0 >= threshold })
-                    LiveActivityCenter.shared.show(.lowBattery(level: newLevel), duration: 4)
+                    center.show(.lowBattery(level: newLevel), duration: 4)
                     break
                 }
             }
             return
         }
+    }
+
+    /// "1 h 05" / "45 min".
+    nonisolated static func durationText(minutes: Int) -> String {
+        minutes >= 60 ? String(format: "%d h %02d", minutes / 60, minutes % 60) : "\(minutes) min"
     }
 }

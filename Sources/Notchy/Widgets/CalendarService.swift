@@ -21,6 +21,9 @@ final class CalendarService: ObservableObject {
     @Published var selectedDay = Calendar.current.startOfDay(for: .now)
     /// The mouse is over the calendar widget: horizontal swipes change the day.
     var isHovered = false
+    /// Video call the mirror is currently preparing for.
+    @Published private(set) var prepEvent: Event?
+    private var prepared = Set<String>()
     private let store = EKEventStore()
     private var announced = Set<String>()
     private var timer: Timer?
@@ -84,15 +87,28 @@ final class CalendarService: ObservableObject {
     }
 
     private func checkUpcomingMeeting() {
-        guard AppSettings.shared.meetingActivity else { return }
+        let settings = AppSettings.shared
         let now = Date.now
-        for event in events where !event.isAllDay && !announced.contains(event.id) {
+        if let prep = prepEvent, prep.start.addingTimeInterval(5 * 60) < now { endMeetingPrep() }
+        for event in events where !event.isAllDay && event.end > now {
             let minutes = Int((event.start.timeIntervalSince(now) / 60).rounded(.up))
-            if minutes <= 5 && minutes >= 0 {
+            if settings.meetingActivity, !announced.contains(event.id), minutes <= 5, minutes >= 0 {
                 announced.insert(event.id)
                 LiveActivityCenter.shared.show(.meeting(title: event.title, minutes: minutes), duration: 6)
             }
+            // Video calls: open the mirror a moment before, to check hair and framing.
+            if settings.meetingPrep, settings.mirrorEnabled, event.meetingURL != nil, !prepared.contains(event.id),
+               minutes <= settings.meetingPrepMinutes, minutes >= 0 {
+                prepared.insert(event.id)
+                prepEvent = event
+                NotchManager.shared.openPrimary(tab: .mirror)
+            }
         }
+    }
+
+    func endMeetingPrep() {
+        prepEvent = nil
+        if let viewModel = NotchManager.shared.primaryViewModel, viewModel.tab == .mirror { viewModel.close() }
     }
 
     /// Video call link (Meet, Zoom, Teams, FaceTime…) found in the event.

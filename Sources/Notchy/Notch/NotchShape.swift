@@ -44,19 +44,60 @@ struct NotchBackground: View {
                     .clipShape(shape)
                 shape.fill(Color.black.opacity(isOpen ? 0.55 : 1))
             case .glass:
-                glass
+                glass(tint: 0.25)
                 shape.fill(Color.black.opacity(isOpen ? 0.12 : 1))
+            case .liquidGlass:
+                // Smoky glass with a lit rim, like NotchNook Pro.
+                glass(tint: 0.5)
+                shape.fill(Color.black.opacity(isOpen ? 0.28 : 1))
+                if isOpen {
+                    shape.stroke(LiquidGlassRim.gradient, lineWidth: 1)
+                    shape.fill(RadialGradient(colors: [.white.opacity(0.07), .clear], center: .top, startRadius: 0, endRadius: 260))
+                }
             }
         }
         .animation(.easeInOut(duration: 0.25), value: isOpen)
     }
 
-    @ViewBuilder private var glass: some View {
+    @ViewBuilder private func glass(tint: Double) -> some View {
         if #available(macOS 26.0, *) {
-            Color.clear.glassEffect(.regular.tint(.black.opacity(0.25)), in: shape)
+            Color.clear.glassEffect(.regular.tint(.black.opacity(tint)), in: shape)
         } else {
-            VisualEffectBlur(material: .underWindowBackground)
+            VisualEffectBlur(material: .hudWindow)
                 .clipShape(shape)
+        }
+    }
+}
+
+enum LiquidGlassRim {
+    /// Light catching the edge: bright at the bottom corners, fading up the sides.
+    static let gradient = LinearGradient(
+        stops: [.init(color: .white.opacity(0.0), location: 0), .init(color: .white.opacity(0.08), location: 0.4),
+                .init(color: .white.opacity(0.32), location: 1)],
+        startPoint: .top, endPoint: .bottom)
+}
+
+/// Background of any floating capsule (the panel bar) in the current style.
+struct CapsuleBackground: View {
+    let appearance: NotchAppearance
+
+    var body: some View {
+        switch appearance {
+        case .black:
+            Capsule().fill(Color.black)
+                .overlay(Capsule().stroke(Color.white.opacity(0.1)))
+        case .translucent:
+            VisualEffectBlur(material: .hudWindow).clipShape(Capsule())
+                .overlay(Capsule().fill(Color.black.opacity(0.5)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.1)))
+        case .glass, .liquidGlass:
+            if #available(macOS 26.0, *) {
+                Color.clear.glassEffect(.regular.tint(.black.opacity(appearance == .liquidGlass ? 0.45 : 0.2)), in: Capsule())
+                    .overlay(Capsule().stroke(LiquidGlassRim.gradient, lineWidth: 1))
+            } else {
+                VisualEffectBlur(material: .hudWindow).clipShape(Capsule())
+                    .overlay(Capsule().fill(Color.black.opacity(0.35)))
+            }
         }
     }
 }

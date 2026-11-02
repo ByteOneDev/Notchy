@@ -253,5 +253,6 @@ struct CircleButtonStyle: ButtonStyle {
             .background(Circle().fill(color.opacity(configuration.isPressed ? 0.6 : 1)))
             .scaleEffect(configuration.isPressed ? 0.92 : 1)
             .contentShape(Circle())
+            .onChange(of: configuration.isPressed) { _, pressed in if pressed { Haptics.tap() } }
     }
 }

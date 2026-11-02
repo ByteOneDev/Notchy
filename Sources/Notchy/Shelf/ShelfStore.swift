@@ -31,9 +31,10 @@ final class ShelfStore: ObservableObject {
     }
 
     func add(urls: [URL]) {
-        for url in urls where !items.contains(where: { $0.url == url }) {
-            items.append(Item(url: url))
-        }
+        let new = urls.filter { url in !items.contains { $0.url == url } }
+        guard !new.isEmpty else { return }
+        items.append(contentsOf: new.map { Item(url: $0) })
+        Haptics.tap()
         save()
     }
 

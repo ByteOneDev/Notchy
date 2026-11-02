@@ -72,7 +72,7 @@ final class BluetoothMonitor: NSObject {
     }
 
     /// Battery through IOBluetooth's undocumented accessors (AirPods / Beats expose them).
-    private static func battery(of device: IOBluetoothDevice) -> Int? {
+    static func battery(of device: IOBluetoothDevice) -> Int? {
         func read(_ name: String) -> Int? {
             let selector = NSSelectorFromString(name)
             guard device.responds(to: selector) else { return nil }

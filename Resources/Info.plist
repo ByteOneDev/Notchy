@@ -4,21 +4,21 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>fr</string>
+	<key>CFBundleDisplayName</key>
+	<string>Notchy</string>
+	<key>CFBundleExecutable</key>
+	<string>Notchy</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.byteone.notchy</string>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>fr</string>
 		<string>en</string>
 	</array>
-	<key>CFBundleExecutable</key>
-	<string>Notchy</string>
-	<key>CFBundleIdentifier</key>
-	<string>com.byteone.notchy</string>
 	<key>CFBundleName</key>
 	<string>Notchy</string>
-	<key>CFBundleDisplayName</key>
-	<string>Notchy</string>
-	<key>CFBundleIconFile</key>
-	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -29,23 +29,27 @@
 	<string>15.0</string>
 	<key>LSUIElement</key>
 	<true/>
-	<key>NSHighResolutionCapable</key>
-	<true/>
-	<key>NSPrincipalClass</key>
-	<string>NSApplication</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Notchy utilise la caméra pour la fonction Miroir.</string>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Notchy affiche tes événements à venir dans le notch.</string>
-	<key>NSCalendarsUsageDescription</key>
-	<string>Notchy affiche tes événements à venir dans le notch.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Notchy lit le morceau en cours dans Spotify, Musique et ton navigateur pour l'afficher dans le notch.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Notchy affiche la connexion et la batterie de tes écouteurs.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Notchy utilise ta position pour afficher la météo locale.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Notchy affiche tes événements à venir dans le notch.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Notchy affiche tes événements à venir dans le notch.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Notchy utilise la caméra pour la fonction Miroir.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 	<key>NSLocationUsageDescription</key>
 	<string>Notchy utilise ta position pour afficher la météo locale.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Notchy utilise ta position pour afficher la météo locale.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Notchy écoute ta voix pour faire défiler le téléprompteur.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Notchy reconnaît ta voix, sur ton Mac, pour faire défiler le téléprompteur.</string>
 </dict>
 </plist>

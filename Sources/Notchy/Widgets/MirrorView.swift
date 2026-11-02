@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MirrorView: View {
     @State private var status = AVCaptureDevice.authorizationStatus(for: .video)
+    @ObservedObject private var calendar = CalendarService.shared
 
     var body: some View {
         HStack(spacing: 18) {
@@ -25,6 +26,9 @@ struct MirrorView: View {
             .frame(width: 230)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.white.opacity(0.12)))
+            if let event = calendar.prepEvent {
+                MeetingPrepCard(event: event)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { PrivacyMonitor.shared.ignoreCamera = true }
@@ -42,6 +46,40 @@ struct MirrorView: View {
                 Button(text, action: action).buttonStyle(PillButtonStyle())
             }
         }
+    }
+}
+
+/// Shown next to the mirror right before a video call.
+private struct MeetingPrepCard: View {
+    let event: CalendarService.Event
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(L("prep.title"), systemImage: "video.badge.checkmark")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.green)
+            Text(event.title).font(.system(size: 16, weight: .semibold)).lineLimit(2)
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                let seconds = event.start.timeIntervalSince(context.date)
+                Text(seconds > 0 ? L("prep.startsIn", seconds.clock) : L("meeting.now"))
+                    .font(.system(size: 12).monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                if let url = event.meetingURL {
+                    Button(L("calendar.join")) {
+                        NSWorkspace.shared.open(url)
+                        CalendarService.shared.endMeetingPrep()
+                    }
+                    .buttonStyle(PillButtonStyle(color: .green))
+                }
+                Button(L("prep.dismiss")) { CalendarService.shared.endMeetingPrep() }
+                    .buttonStyle(PillButtonStyle(color: .white.opacity(0.15)))
+            }
+        }
+        .frame(width: 220, alignment: .leading)
+        .frame(maxHeight: .infinity)
     }
 }
 

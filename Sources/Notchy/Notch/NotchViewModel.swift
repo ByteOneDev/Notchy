@@ -2,18 +2,23 @@ import AppKit
 import SwiftUI
 
 enum NotchTab: String, CaseIterable, Identifiable {
-    case home, shelf, timer, teleprompter, mirror
+    case home, music, calendar, shelf, teleprompter, agents, timer, mirror
     var id: String { rawValue }
 
     var icon: String {
         switch self {
-        case .home: "house.fill"
-        case .shelf: "tray.full.fill"
+        case .home: "rectangle.topthird.inset.filled"
+        case .music: "play.fill"
+        case .calendar: "calendar"
+        case .shelf: "tray.fill"
+        case .teleprompter: "text.alignleft"
+        case .agents: "sparkle"
         case .timer: "timer"
-        case .teleprompter: "text.aligncenter"
         case .mirror: "person.crop.square.fill"
         }
     }
+
+    var title: String { L("tab.\(rawValue)") }
 }
 
 extension NSScreen {
@@ -54,9 +59,12 @@ final class NotchViewModel: ObservableObject {
     let notchSize: CGSize
     let hasHardwareNotch: Bool
 
-    static let canvasSize = CGSize(width: 1000, height: 300)
-    static let openWidth: CGFloat = 860
-    static let openContentHeight: CGFloat = 156
+    /// The window: big enough for the open notch plus its shadow.
+    static var canvasSize: CGSize {
+        CGSize(width: openWidth + 140, height: openContentHeight + 140)
+    }
+    static var openWidth: CGFloat { AppSettings.shared.openWidth }
+    static var openContentHeight: CGFloat { AppSettings.shared.openHeight }
 
     init(screen: NSScreen) {
         displayID = screen.displayID
@@ -72,9 +80,12 @@ final class NotchViewModel: ObservableObject {
     }
 
     func open(tab: NotchTab? = nil) {
+        // In full screen the notch stays out of the way.
+        guard !hiddenForFullscreen else { return }
         if let tab { self.tab = tab }
         guard state != .open else { return }
         Haptics.tap()
+        Sounds.play(.open)
         withAnimation(.notchOpen) { state = .open }
     }
 
@@ -86,6 +97,22 @@ final class NotchViewModel: ObservableObject {
 
     func toggle() { isOpen ? close() : open() }
 
+    /// Panels shown in the bar, according to what is enabled in the settings.
+    var availableTabs: [NotchTab] {
+        let settings = AppSettings.shared
+        return NotchTab.allCases.filter { tab in
+            switch tab {
+            case .music: settings.mediaEnabled
+            case .calendar: settings.calendarEnabled
+            case .shelf: settings.shelfEnabled
+            case .teleprompter: settings.teleprompterEnabled
+            case .agents: settings.agentsEnabled
+            case .mirror: settings.mirrorEnabled
+            case .home, .timer: true
+            }
+        }
+    }
+
     // MARK: Trackpad gestures
 
     private var scrollX: CGFloat = 0
@@ -93,6 +120,7 @@ final class NotchViewModel: ObservableObject {
     private var gestureConsumed = false
 
     func handleScroll(_ event: NSEvent) {
+        guard !hiddenForFullscreen else { return }
         if event.phase == .began || (event.phase.isEmpty && event.momentumPhase.isEmpty && !gestureConsumed && scrollX == 0 && scrollY == 0) {
             scrollX = 0; scrollY = 0; gestureConsumed = false
         }
@@ -114,7 +142,7 @@ final class NotchViewModel: ObservableObject {
         }
 
         // Over the calendar, a horizontal swipe walks through the days, one day every 45 pt.
-        if isOpen, tab == .home, CalendarService.shared.isHovered, abs(scrollX) > 45, abs(scrollX) > abs(scrollY) {
+        if isOpen, tab == .home || tab == .calendar, CalendarService.shared.isHovered, abs(scrollX) > 45, abs(scrollX) > abs(scrollY) {
             Haptics.tap()
             // Fingers moving left = next day, like turning pages.
             CalendarService.shared.moveSelection(by: scrollX < 0 ? 1 : -1)
@@ -137,7 +165,12 @@ final class NotchViewModel: ObservableObject {
 
     /// The notch stays open while the teleprompter is being read or edited.
     var isPinned: Bool {
-        tab == .teleprompter && (Teleprompter.shared.isRunning || Teleprompter.shared.isEditing)
+        switch tab {
+        case .teleprompter: Teleprompter.shared.isRunning || Teleprompter.shared.isEditing
+        case .mirror: CalendarService.shared.prepEvent != nil
+        case .agents: !AgentHub.shared.pendingPermissions.isEmpty
+        default: false
+        }
     }
 }
 

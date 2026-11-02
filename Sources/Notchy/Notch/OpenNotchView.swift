@@ -6,40 +6,31 @@ struct OpenNotchView: View {
     @ObservedObject private var weather = WeatherService.shared
     @ObservedObject private var battery = BatteryMonitor.shared
 
-    private var tabs: [NotchTab] {
-        NotchTab.allCases.filter { tab in
-            switch tab {
-            case .shelf: settings.shelfEnabled
-            case .mirror: settings.mirrorEnabled
-            case .teleprompter: settings.teleprompterEnabled
-            default: true
-            }
-        }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             header
                 .frame(height: viewModel.notchSize.height)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 22)
-                .padding(.top, 8)
-                .padding(.bottom, 14)
+                .padding(.horizontal, 24)
+                .padding(.top, 6)
+                .padding(.bottom, 16)
+                .id(viewModel.tab)
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
         }
         .foregroundStyle(.white)
+        .animation(.snappy(duration: 0.25), value: viewModel.tab)
     }
 
-    /// The row level with the hardware notch: tabs on the left, status on the right.
+    /// The row level with the hardware notch: date on the left, status on the right.
     private var header: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 4) {
-                ForEach(tabs) { tab in
-                    TabButton(icon: tab.icon, selected: viewModel.tab == tab) {
-                        withAnimation(.snappy(duration: 0.25)) { viewModel.tab = tab }
-                    }
-                }
+            HStack(spacing: 6) {
+                Text(Date.now.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(settings.language.locale)).uppercased())
+                    .foregroundStyle(.red)
+                Text(viewModel.tab.title.uppercased()).foregroundStyle(.white.opacity(0.4))
             }
+            .font(.system(size: 11, weight: .semibold))
             Spacer(minLength: viewModel.notchSize.width + 16)
             HStack(spacing: 10) {
                 if settings.weatherEnabled, let current = weather.current {
@@ -52,6 +43,7 @@ struct OpenNotchView: View {
                 }
                 if let level = battery.level {
                     BatteryGlyph(level: level, charging: battery.isCharging)
+                        .help(battery.minutesToFull.map { L("battery.fullIn", BatteryMonitor.durationText(minutes: $0)) } ?? "")
                 }
                 Button {
                     SettingsWindowController.shared.show()
@@ -61,20 +53,24 @@ struct OpenNotchView: View {
                 .buttonStyle(HoverButtonStyle())
             }
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 22)
         .padding(.top, 2)
     }
 
     @ViewBuilder private var content: some View {
         switch viewModel.tab {
         case .home: HomeView()
+        case .music: MusicPanel()
+        case .calendar: CalendarPanel()
         case .shelf: ShelfView()
-        case .timer: TimerTabView()
         case .teleprompter: TeleprompterView()
+        case .agents: AgentsView()
+        case .timer: TimerTabView()
         case .mirror: MirrorView()
         }
     }
 }
+
 
 struct TabButton: View {
     let icon: String
@@ -114,6 +110,7 @@ struct HoverButtonStyle: ButtonStyle {
                 .scaleEffect(configuration.isPressed ? 0.9 : 1)
                 .contentShape(Circle())
                 .onHover { hovering = $0 }
+                .onChange(of: configuration.isPressed) { _, pressed in if pressed { Haptics.tap() } }
                 .animation(.easeOut(duration: 0.12), value: hovering)
                 .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
         }

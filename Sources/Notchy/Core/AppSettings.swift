@@ -10,7 +10,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 }
 
 enum NotchAppearance: String, CaseIterable, Identifiable {
-    case black, translucent, glass
+    case black, translucent, glass, liquidGlass
     var id: String { rawValue }
 }
 
@@ -73,6 +73,36 @@ final class AppSettings: ObservableObject {
     @Published var mirrorEnabled: Bool { didSet { save(mirrorEnabled, "mirrorEnabled") } }
     @Published var shelfEnabled: Bool { didSet { save(shelfEnabled, "shelfEnabled") } }
     @Published var teleprompterEnabled: Bool { didSet { save(teleprompterEnabled, "teleprompterEnabled") } }
+    @Published var teleprompterFollowsVoice: Bool { didSet { save(teleprompterFollowsVoice, "teleprompterFollowsVoice") } }
+    @Published var teleprompterLanguage: AppLanguage { didSet { save(teleprompterLanguage.rawValue, "teleprompterLanguage") } }
+    @Published var rainAlert: Bool { didSet { save(rainAlert, "rainAlert") } }
+    @Published var meetingPrep: Bool { didSet { save(meetingPrep, "meetingPrep") } }
+    @Published var meetingPrepMinutes: Int { didSet { save(meetingPrepMinutes, "meetingPrepMinutes") } }
+
+    // More live activities
+    @Published var deviceBatteryActivity: Bool { didSet { save(deviceBatteryActivity, "deviceBatteryActivity") } }
+    @Published var displayActivity: Bool { didSet { save(displayActivity, "displayActivity") } }
+    @Published var focusActivity: Bool { didSet { save(focusActivity, "focusActivity") } }
+
+    // AI agents
+    @Published var agentsEnabled: Bool { didSet { save(agentsEnabled, "agentsEnabled") } }
+    @Published var agentActivity: Bool { didSet { save(agentActivity, "agentActivity") } }
+    @Published var usageAlert: Bool { didSet { save(usageAlert, "usageAlert") } }
+    @Published var usageAlertThreshold: Int { didSet { save(usageAlertThreshold, "usageAlertThreshold") } }
+
+    // Notch size, sounds, privacy
+    @Published var openWidth: Double { didSet { save(openWidth, "openWidth") } }
+    @Published var openHeight: Double { didSet { save(openHeight, "openHeight") } }
+    @Published var hideFromScreenCapture: Bool { didSet { save(hideFromScreenCapture, "hideFromScreenCapture") } }
+    @Published var sounds: Bool { didSet { save(sounds, "sounds") } }
+    @Published var soundVolume: Double { didSet { save(soundVolume, "soundVolume") } }
+
+    // Keyboard shortcuts
+    @Published var toggleNotchShortcut: KeyboardShortcutSetting? { didSet { saveShortcut(toggleNotchShortcut, "toggleNotchShortcut") } }
+    @Published var teleprompterShortcut: KeyboardShortcutSetting? { didSet { saveShortcut(teleprompterShortcut, "teleprompterShortcut") } }
+
+    static let defaultOpenWidth: Double = 860
+    static let defaultOpenHeight: Double = 170
 
     static let defaultAllowedApps = [
         "com.spotify.client", "com.apple.Music", "com.apple.podcasts", "com.deezer.deezer-desktop",
@@ -90,7 +120,7 @@ final class AppSettings: ObservableObject {
         let d = UserDefaults.standard
         func value<T>(_ key: String, _ fallback: T) -> T { d.object(forKey: key) as? T ?? fallback }
         language = AppLanguage(rawValue: value("language", "fr")) ?? .fr
-        appearance = NotchAppearance(rawValue: value("appearance", "black")) ?? .black
+        appearance = NotchAppearance(rawValue: value("appearance", "liquidGlass")) ?? .liquidGlass
         displayTarget = DisplayTarget(rawValue: value("displayTarget", "builtIn")) ?? .builtIn
         openOnHover = value("openOnHover", false)
         hoverDelay = value("hoverDelay", 0.12)
@@ -125,11 +155,46 @@ final class AppSettings: ObservableObject {
         mirrorEnabled = value("mirrorEnabled", true)
         shelfEnabled = value("shelfEnabled", true)
         teleprompterEnabled = value("teleprompterEnabled", true)
+        teleprompterFollowsVoice = value("teleprompterFollowsVoice", false)
+        teleprompterLanguage = AppLanguage(rawValue: value("teleprompterLanguage", "fr")) ?? .fr
+        rainAlert = value("rainAlert", true)
+        meetingPrep = value("meetingPrep", true)
+        meetingPrepMinutes = value("meetingPrepMinutes", 2)
+        deviceBatteryActivity = value("deviceBatteryActivity", true)
+        displayActivity = value("displayActivity", true)
+        focusActivity = value("focusActivity", true)
+        agentsEnabled = value("agentsEnabled", true)
+        agentActivity = value("agentActivity", true)
+        usageAlert = value("usageAlert", true)
+        usageAlertThreshold = value("usageAlertThreshold", 80)
+        openWidth = value("openWidth", Self.defaultOpenWidth)
+        openHeight = value("openHeight", Self.defaultOpenHeight)
+        hideFromScreenCapture = value("hideFromScreenCapture", true)
+        sounds = value("sounds", true)
+        soundVolume = value("soundVolume", 0.3)
+        toggleNotchShortcut = Self.loadShortcut("toggleNotchShortcut") ?? KeyboardShortcutSetting.defaultToggleNotch
+        teleprompterShortcut = Self.loadShortcut("teleprompterShortcut") ?? nil
+        isLoaded = true
         Loc.language = language
     }
 
     private func save(_ value: Any, _ key: String) {
         defaults.set(value, forKey: key)
+    }
+
+    /// Optional properties assigned at the end of init still fire their observers: ignore those.
+    private var isLoaded = false
+
+    private func saveShortcut(_ shortcut: KeyboardShortcutSetting?, _ key: String) {
+        guard isLoaded else { return }
+        // An explicit "none" is stored so the default does not come back.
+        defaults.set(shortcut.map { [$0.keyCode, Int($0.modifiers)] } ?? [], forKey: key)
+        HotKeyCenter.shared.reload()
+    }
+
+    private static func loadShortcut(_ key: String) -> KeyboardShortcutSetting?? {
+        guard let raw = UserDefaults.standard.array(forKey: key) as? [Int] else { return nil }
+        return .some(raw.count == 2 ? KeyboardShortcutSetting(keyCode: raw[0], modifiers: UInt(raw[1])) : nil)
     }
 
     var launchAtLogin: Bool {

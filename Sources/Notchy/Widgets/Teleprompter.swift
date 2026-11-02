@@ -1,11 +1,19 @@
+import AVFoundation
+import Speech
 import SwiftUI
 
-/// Scrolls a script right under the camera, so you read while looking at it.
+/// Scrolls a script right under the camera, so you read while looking at it. Either at a fixed
+/// speed, or following your voice with on-device speech recognition.
 @MainActor
 final class Teleprompter: ObservableObject {
     static let shared = Teleprompter()
 
-    @Published var text: String { didSet { UserDefaults.standard.set(text, forKey: "teleprompterText") } }
+    @Published var text: String {
+        didSet {
+            UserDefaults.standard.set(text, forKey: "teleprompterText")
+            voice.setScript(text)
+        }
+    }
     @Published var speed: Double { didSet { UserDefaults.standard.set(speed, forKey: "teleprompterSpeed") } }
     @Published var fontSize: Double { didSet { UserDefaults.standard.set(fontSize, forKey: "teleprompterFontSize") } }
     @Published var isEditing = false
@@ -15,6 +23,10 @@ final class Teleprompter: ObservableObject {
     @Published private(set) var offset: CGFloat = 0
     /// Height of the laid out text, reported by the view; scrolling stops at the end.
     var textHeight: CGFloat = 0
+    /// Vertical position of a character in the laid out text, provided by the text view.
+    var yForCharacter: ((Int) -> CGFloat)?
+
+    let voice = VoiceFollower()
 
     /// Points per second at speed ×1.
     static let baseSpeed: Double = 28
@@ -26,8 +38,10 @@ final class Teleprompter: ObservableObject {
         text = defaults.string(forKey: "teleprompterText") ?? ""
         speed = defaults.object(forKey: "teleprompterSpeed") as? Double ?? 1
         fontSize = defaults.object(forKey: "teleprompterFontSize") as? Double ?? 22
+        voice.setScript(text)
     }
 
+    var followsVoice: Bool { AppSettings.shared.teleprompterFollowsVoice }
     var isFinished: Bool { textHeight > 0 && offset >= textHeight }
 
     var remainingTime: TimeInterval {
@@ -42,7 +56,7 @@ final class Teleprompter: ObservableObject {
     func start() {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { isEditing = true; return }
         isEditing = false
-        if isFinished { offset = 0 }
+        if isFinished { restart() }
         countdown = 3
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
@@ -62,6 +76,7 @@ final class Teleprompter: ObservableObject {
     private func run() {
         isRunning = true
         lastTick = .now
+        if followsVoice { voice.start() }
         timer = Timer.scheduledTimer(withTimeInterval: 1 / 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
@@ -70,11 +85,18 @@ final class Teleprompter: ObservableObject {
 
     private func tick() {
         let now = Date.now
-        offset += CGFloat(now.timeIntervalSince(lastTick) * Self.baseSpeed * speed)
+        let dt = now.timeIntervalSince(lastTick)
         lastTick = now
-        if isFinished {
-            offset = textHeight
-            pause()
+        if followsVoice {
+            // Glide toward the line being spoken.
+            guard let location = voice.spokenLocation, let y = yForCharacter?(location) else { return }
+            offset += (y - offset) * CGFloat(min(1, dt * 5))
+        } else {
+            offset += CGFloat(dt * Self.baseSpeed * speed)
+            if isFinished {
+                offset = textHeight
+                pause()
+            }
         }
     }
 
@@ -83,10 +105,12 @@ final class Teleprompter: ObservableObject {
         timer = nil
         countdown = nil
         isRunning = false
+        voice.stop()
     }
 
     func restart() {
         offset = 0
+        voice.reset()
         if isRunning { lastTick = .now }
     }
 
@@ -95,18 +119,175 @@ final class Teleprompter: ObservableObject {
         offset = min(max(0, offset + delta), max(textHeight, 0))
         lastTick = .now
     }
+}
 
-    func changeSpeed(by delta: Double) {
-        speed = min(4, max(0.25, (speed + delta) * 100).rounded() / 100)
+/// Follows the reader through the script with on-device speech recognition.
+@MainActor
+final class VoiceFollower: ObservableObject {
+    private struct Word {
+        let text: String
+        let location: Int
     }
 
-    func changeFontSize(by delta: Double) {
-        fontSize = min(40, max(14, fontSize + delta))
+    /// Index of the next word to be read.
+    @Published private(set) var cursor = 0
+    @Published private(set) var isListening = false
+    @Published private(set) var error: String?
+
+    private var words: [Word] = []
+    private var recognizer: SFSpeechRecognizer?
+    private var request: SFSpeechAudioBufferRecognitionRequest?
+    private var task: SFSpeechRecognitionTask?
+    private let engine = AVAudioEngine()
+    /// Words of the current recognition task already matched.
+    private var consumedWords = 0
+
+    /// Location (UTF-16 offset) of the next word to read, for scrolling and highlighting.
+    var spokenLocation: Int? {
+        guard !words.isEmpty else { return nil }
+        return words[min(cursor, words.count - 1)].location
+    }
+
+    func setScript(_ script: String) {
+        var result: [Word] = []
+        let ns = script as NSString
+        ns.enumerateSubstrings(in: NSRange(location: 0, length: ns.length), options: .byWords) { word, range, _, _ in
+            if let word { result.append(Word(text: Self.normalize(word), location: range.location)) }
+        }
+        words = result
+        cursor = min(cursor, max(0, result.count - 1))
+    }
+
+    func reset() { cursor = 0 }
+
+    func start() {
+        guard !isListening else { return }
+        error = nil
+        SFSpeechRecognizer.requestAuthorization { status in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard status == .authorized else { self.error = L("voice.denied"); return }
+                    AVCaptureDevice.requestAccess(for: .audio) { granted in
+                        DispatchQueue.main.async {
+                            MainActor.assumeIsolated {
+                                if granted { self.beginRecognition() } else { self.error = L("voice.micDenied") }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func stop() {
+        isListening = false
+        task?.cancel()
+        task = nil
+        request?.endAudio()
+        request = nil
+        if engine.isRunning {
+            engine.stop()
+            engine.inputNode.removeTap(onBus: 0)
+        }
+        PrivacyMonitor.shared.ignoreMicrophone = false
+    }
+
+    private func beginRecognition() {
+        let locale = Locale(identifier: AppSettings.shared.teleprompterLanguage == .fr ? "fr-FR" : "en-US")
+        guard let recognizer = SFSpeechRecognizer(locale: locale), recognizer.isAvailable else {
+            error = L("voice.unavailable")
+            return
+        }
+        self.recognizer = recognizer
+        PrivacyMonitor.shared.ignoreMicrophone = true
+        isListening = true
+
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        input.removeTap(onBus: 0)
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            // Audio thread: hand the buffer to the current request.
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.request?.append(buffer) } }
+        }
+        engine.prepare()
+        do { try engine.start() } catch {
+            self.error = L("voice.micDenied")
+            stop()
+            return
+        }
+        startTask()
+    }
+
+    /// One recognition task; restarted whenever it ends so listening is continuous.
+    private func startTask() {
+        guard isListening, let recognizer else { return }
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
+        request.taskHint = .dictation
+        self.request = request
+        consumedWords = 0
+        task = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            let spoken = result?.bestTranscription.segments.map(\.substring) ?? []
+            let isFinal = result?.isFinal ?? false
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    if !spoken.isEmpty { self.follow(spoken) }
+                    if isFinal || error != nil {
+                        self.request?.endAudio()
+                        self.task = nil
+                        if self.isListening { self.startTask() }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Moves the cursor to where the last spoken words appear, just ahead in the script.
+    private func follow(_ spoken: [String]) {
+        let fresh = spoken.map(Self.normalize).filter { !$0.isEmpty }
+        guard fresh.count > consumedWords, !words.isEmpty else { return }
+        let recent = Array(fresh.suffix(min(4, fresh.count)))
+        let window = max(0, cursor - 2)..<min(words.count, cursor + 30)
+        var best: (index: Int, score: Int)?
+        for end in window {
+            // Count how many of the recent words line up, ending at `end`.
+            var score = 0
+            for (offset, word) in recent.reversed().enumerated() {
+                let index = end - offset
+                guard index >= 0 else { break }
+                if Self.similar(words[index].text, word) { score += 1 }
+            }
+            // Prefer the closest match; long single words are enough to resync.
+            let enough = score >= 2 || (score == 1 && recent.count == 1 && words[end].text.count >= 4 && end - cursor <= 3)
+            if enough, score > (best?.score ?? 0) { best = (end, score) }
+        }
+        if let best, best.index + 1 > cursor {
+            cursor = min(best.index + 1, words.count - 1)
+            consumedWords = fresh.count
+        }
+    }
+
+    private static func similar(_ a: String, _ b: String) -> Bool {
+        if a == b { return true }
+        // Tolerate small recognition slips on longer words (plural, elision…).
+        guard a.count >= 4, b.count >= 4 else { return false }
+        return a.hasPrefix(String(b.prefix(4))) && abs(a.count - b.count) <= 2
+    }
+
+    private static func normalize(_ word: String) -> String {
+        word.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .filter { $0.isLetter || $0.isNumber }
     }
 }
 
+// MARK: - Views
+
 struct TeleprompterView: View {
     @ObservedObject private var prompter = Teleprompter.shared
+    @ObservedObject private var voice = Teleprompter.shared.voice
+    @ObservedObject private var settings = AppSettings.shared
     @FocusState private var editorFocused: Bool
 
     var body: some View {
@@ -121,7 +302,7 @@ struct TeleprompterView: View {
     }
 
     private var controls: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 6) {
                 Button { prompter.toggle() } label: {
                     Image(systemName: prompter.isRunning || prompter.countdown != nil ? "pause.fill" : "play.fill")
@@ -138,19 +319,34 @@ struct TeleprompterView: View {
                     .buttonStyle(CircleButtonStyle())
                     .help(prompter.isEditing ? L("teleprompter.done") : L("teleprompter.edit"))
             }
-            Stepper(value: Binding(get: { prompter.speed }, set: { prompter.speed = $0 }), in: 0.25...4, step: 0.25) {
-                Label(String(format: "×%.2g", prompter.speed), systemImage: "gauge.with.dots.needle.33percent")
+            Picker("", selection: $settings.teleprompterFollowsVoice) {
+                Image(systemName: "gauge.with.dots.needle.33percent").tag(false).help(L("teleprompter.modeAuto"))
+                Image(systemName: "waveform").tag(true).help(L("teleprompter.modeVoice"))
             }
-            Stepper(value: Binding(get: { prompter.fontSize }, set: { prompter.fontSize = $0 }), in: 14...40, step: 2) {
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 100)
+            .onChange(of: settings.teleprompterFollowsVoice) { prompter.pause() }
+            if settings.teleprompterFollowsVoice {
+                HStack(spacing: 4) {
+                    Circle().fill(voice.isListening ? Color.red : Color.gray).frame(width: 6, height: 6)
+                    Text(voice.error ?? (voice.isListening ? L("voice.listening") : L("voice.idle")))
+                        .lineLimit(2)
+                }
+                .font(.system(size: 10))
+                .foregroundStyle(voice.error == nil ? .white.opacity(0.6) : .orange)
+            } else {
+                Stepper(value: $prompter.speed, in: 0.25...4, step: 0.25) {
+                    Label(String(format: "×%.2g", prompter.speed), systemImage: "hare")
+                }
+            }
+            Stepper(value: $prompter.fontSize, in: 14...40, step: 2) {
                 Label("\(Int(prompter.fontSize)) pt", systemImage: "textformat.size")
             }
-            Text(L("teleprompter.remaining", prompter.remainingTime.clock))
-                .font(.system(size: 10).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.45))
         }
         .font(.system(size: 11, weight: .medium))
         .controlSize(.mini)
-        .frame(width: 128, alignment: .leading)
+        .frame(width: 132, alignment: .leading)
     }
 
     private var editor: some View {
@@ -186,13 +382,9 @@ struct TeleprompterView: View {
                         .buttonStyle(PillButtonStyle())
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    Text(prompter.text)
-                        .font(.system(size: prompter.fontSize, weight: .semibold))
-                        .lineSpacing(prompter.fontSize * 0.25)
-                        .multilineTextAlignment(.center)
-                        .frame(width: geo.size.width)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { prompter.textHeight = $0 }
+                    PrompterText(text: prompter.text, fontSize: prompter.fontSize,
+                                 readUpTo: settings.teleprompterFollowsVoice ? voice.spokenLocation : nil)
+                        .frame(width: geo.size.width, height: max(prompter.textHeight, 1))
                         .offset(y: readingLine - prompter.offset)
                 }
                 if let count = prompter.countdown {
@@ -217,5 +409,93 @@ struct TeleprompterView: View {
                     .offset(x: -10, y: readingLine + prompter.fontSize * 0.45)
             }
         }
+    }
+}
+
+/// The script laid out with TextKit, so the voice follower knows where each word sits.
+private struct PrompterText: NSViewRepresentable {
+    let text: String
+    let fontSize: Double
+    /// Words before this location are dimmed (already read).
+    let readUpTo: Int?
+
+    func makeNSView(context: Context) -> PrompterTextView {
+        let view = PrompterTextView()
+        view.onHeight = { height in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    if abs(Teleprompter.shared.textHeight - height) > 0.5 {
+                        Teleprompter.shared.textHeight = height
+                        Teleprompter.shared.objectWillChange.send()
+                    }
+                }
+            }
+        }
+        Teleprompter.shared.yForCharacter = { [weak view] location in view?.y(forCharacter: location) ?? 0 }
+        return view
+    }
+
+    func updateNSView(_ view: PrompterTextView, context: Context) {
+        view.update(text: text, fontSize: fontSize, readUpTo: readUpTo)
+    }
+}
+
+final class PrompterTextView: NSView {
+    private let storage = NSTextStorage()
+    private let layoutManager = NSLayoutManager()
+    private let container = NSTextContainer()
+    private var current: (String, Double, Int?)?
+    var onHeight: ((CGFloat) -> Void)?
+
+    override var isFlipped: Bool { true }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        storage.addLayoutManager(layoutManager)
+        layoutManager.addTextContainer(container)
+        container.lineFragmentPadding = 0
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func update(text: String, fontSize: Double, readUpTo: Int?) {
+        guard current.map({ $0.0 != text || $0.1 != fontSize || $0.2 != readUpTo }) ?? true else { return }
+        current = (text, fontSize, readUpTo)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineSpacing = fontSize * 0.25
+        let attributed = NSMutableAttributedString(string: text, attributes: [
+            .font: NSFont.systemFont(ofSize: fontSize, weight: .semibold),
+            .foregroundColor: NSColor.white,
+            .paragraphStyle: paragraph,
+        ])
+        if let readUpTo, readUpTo > 0 {
+            attributed.addAttribute(.foregroundColor, value: NSColor.white.withAlphaComponent(0.35),
+                                    range: NSRange(location: 0, length: min(readUpTo, attributed.length)))
+        }
+        storage.setAttributedString(attributed)
+        relayout()
+    }
+
+    override func layout() {
+        super.layout()
+        if container.size.width != bounds.width { relayout() }
+    }
+
+    private func relayout() {
+        container.size = NSSize(width: max(bounds.width, 10), height: .greatestFiniteMagnitude)
+        layoutManager.ensureLayout(for: container)
+        onHeight?(ceil(layoutManager.usedRect(for: container).height))
+        needsDisplay = true
+    }
+
+    func y(forCharacter location: Int) -> CGFloat {
+        guard storage.length > 0 else { return 0 }
+        let glyph = layoutManager.glyphIndexForCharacter(at: min(location, storage.length - 1))
+        return layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil).minY
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        layoutManager.drawGlyphs(forGlyphRange: layoutManager.glyphRange(for: container), at: .zero)
     }
 }

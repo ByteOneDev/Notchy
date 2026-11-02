@@ -20,6 +20,12 @@ final class NotchManager {
             .dropFirst()
             .sink { [weak self] _ in DispatchQueue.main.async { self?.rebuild() } }
             .store(in: &cancellables)
+        // The window is sized after the open notch: resize it once the sliders settle.
+        AppSettings.shared.$openWidth.combineLatest(AppSettings.shared.$openHeight)
+            .dropFirst()
+            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.resizeWindows() }
+            .store(in: &cancellables)
 
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
             .merge(with: NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification))
@@ -27,7 +33,7 @@ final class NotchManager {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self?.updateFullscreen() }
             }
             .store(in: &cancellables)
-        fullscreenTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+        fullscreenTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.updateFullscreen() }
         }
     }
@@ -59,6 +65,10 @@ final class NotchManager {
         }
     }
 
+    private func resizeWindows() {
+        controllers.values.forEach { $0.updateFrame() }
+    }
+
     private func rebuild() {
         controllers.values.forEach { $0.invalidate() }
         controllers.removeAll()
@@ -79,6 +89,17 @@ final class NotchManager {
         }
     }
 
+    /// The menu bar is a Window Server window at the main menu level along the top of the display.
+    private static func menuBarWindowVisible(on display: CGRect, windows: [[String: Any]]) -> Bool {
+        windows.contains { window in
+            guard (window[kCGWindowOwnerName as String] as? String) == "Window Server",
+                  (window[kCGWindowLayer as String] as? Int) == Int(CGWindowLevelForKey(.mainMenuWindow)),
+                  let boundsDict = window[kCGWindowBounds as String] as? NSDictionary,
+                  let bounds = CGRect(dictionaryRepresentation: boundsDict) else { return false }
+            return abs(bounds.minY - display.minY) < 2 && bounds.intersects(display)
+        }
+    }
+
     /// Displays where the frontmost app has a window covering the whole screen, menu bar included.
     private static func displaysWithFullscreenWindow() -> Set<CGDirectDisplayID> {
         guard let frontPID = NSWorkspace.shared.frontmostApplication?.processIdentifier,
@@ -92,8 +113,20 @@ final class NotchManager {
                   let boundsDict = window[kCGWindowBounds as String] as? NSDictionary,
                   let bounds = CGRect(dictionaryRepresentation: boundsDict) else { continue }
             for screen in NSScreen.screens {
-                let displayBounds = CGDisplayBounds(screen.displayID)
-                if bounds.equalTo(displayBounds) { result.insert(screen.displayID) }
+                let display = CGDisplayBounds(screen.displayID)
+                if bounds.equalTo(display) {
+                    result.insert(screen.displayID)
+                    continue
+                }
+                // On notched screens full-screen apps stop under the notch. Tell them apart from
+                // a merely maximized window by the menu bar, which is hidden in full screen.
+                let topInset = max(screen.safeAreaInsets.top, 1)
+                let coversBelowNotch = abs(bounds.width - display.width) < 1
+                    && bounds.minY - display.minY <= topInset + 1
+                    && bounds.maxY >= display.maxY - 1
+                let menuBarHidden = screen.visibleFrame.maxY >= screen.frame.maxY - 1
+                    || !menuBarWindowVisible(on: display, windows: info)
+                if coversBelowNotch, menuBarHidden { result.insert(screen.displayID) }
             }
         }
         return result

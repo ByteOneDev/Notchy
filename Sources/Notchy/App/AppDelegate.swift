@@ -28,6 +28,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         PrivacyMonitor.shared.start()
         CalendarService.shared.start()
         WeatherService.shared.start()
+        DeviceBatteryMonitor.shared.start()
+        DisplayMonitor.shared.start()
+        FocusMonitor.shared.start()
+        AgentHub.shared.start()
+        HotKeyCenter.shared.start()
         NotchManager.shared.start()
 
         AppSettings.shared.$showMenuBarIcon
@@ -52,9 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func setStatusItemVisible(_ visible: Bool) {
         if visible, statusItem == nil {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-            item.button?.image = NSImage(systemSymbolName: "capsule.portrait.fill", accessibilityDescription: "Notchy")?
-                .withSymbolConfiguration(.init(pointSize: 11, weight: .semibold))
-            item.button?.image?.isTemplate = true
+            item.button?.image = Self.menuBarGlyph
             statusItem = item
             rebuildMenu()
         } else if !visible, let item = statusItem {
@@ -62,6 +65,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             statusItem = nil
         }
     }
+
+    /// The logo reduced to a template glyph: a screen outline with its notch.
+    static let menuBarGlyph: NSImage = {
+        let image = NSImage(size: NSSize(width: 18, height: 14), flipped: true) { _ in
+            let screen = NSBezierPath(roundedRect: NSRect(x: 1, y: 1.5, width: 16, height: 11.5), xRadius: 3, yRadius: 3)
+            screen.lineWidth = 1.5
+            NSColor.black.setStroke()
+            screen.stroke()
+            let notch = NSBezierPath(roundedRect: NSRect(x: 5.5, y: 0.75, width: 7, height: 4.5), xRadius: 1.8, yRadius: 1.8)
+            NSColor.black.setFill()
+            notch.fill()
+            NSRect(x: 5.5, y: 0.75, width: 7, height: 2).fill()
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }()
 
     private func rebuildMenu() {
         guard let statusItem else { return }

@@ -21,13 +21,14 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
     @Published private(set) var cityName = ""
     private let locationManager = CLLocationManager()
     private var timer: Timer?
-    private var coordinate: CLLocationCoordinate2D?
+    private var rainAnnounced = false
 
     func start() {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 30 * 60, repeats: true) { _ in
+        // Every 15 minutes, so the rain alert comes early enough.
+        timer = Timer.scheduledTimer(withTimeInterval: 15 * 60, repeats: true) { _ in
             MainActor.assumeIsolated { WeatherService.shared.refresh() }
         }
     }
@@ -72,13 +73,17 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
                 URLQueryItem(name: "longitude", value: String(longitude)),
                 URLQueryItem(name: "current", value: "temperature_2m,weather_code,is_day"),
                 URLQueryItem(name: "daily", value: "temperature_2m_max,temperature_2m_min"),
+                URLQueryItem(name: "minutely_15", value: "precipitation"),
+                URLQueryItem(name: "forecast_minutely_15", value: "12"),
                 URLQueryItem(name: "forecast_days", value: "1"),
                 URLQueryItem(name: "timezone", value: "auto"),
+                URLQueryItem(name: "timeformat", value: "unixtime"),
             ]
             guard let (data, _) = try? await URLSession.shared.data(from: components.url!),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let current = json["current"] as? [String: Any],
                   let daily = json["daily"] as? [String: Any] else { return }
+            checkRain(json["minutely_15"] as? [String: Any])
             self.current = Current(
                 temperature: current["temperature_2m"] as? Double ?? 0,
                 code: current["weather_code"] as? Int ?? 0,
@@ -88,6 +93,24 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
             )
             if let city { cityName = city }
         }
+    }
+
+    /// Announces rain expected within the next hour, once per dry spell.
+    private func checkRain(_ minutely: [String: Any]?) {
+        guard let times = minutely?["time"] as? [Double],
+              let amounts = minutely?["precipitation"] as? [Double], times.count == amounts.count else { return }
+        let now = Date.now.timeIntervalSince1970
+        let upcoming = zip(times, amounts).filter { $0.0 + 15 * 60 > now && $0.0 < now + 75 * 60 }
+        let wet = upcoming.filter { $0.1 >= 0.1 }
+        guard let first = wet.first else {
+            rainAnnounced = false
+            return
+        }
+        guard AppSettings.shared.rainAlert, !rainAnnounced else { return }
+        rainAnnounced = true
+        let minutes = max(0, Int(((first.0 - now) / 60).rounded()))
+        let heavy = wet.contains { $0.1 >= 1.5 }
+        LiveActivityCenter.shared.show(.rain(minutes: minutes, heavy: heavy), duration: 5)
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {

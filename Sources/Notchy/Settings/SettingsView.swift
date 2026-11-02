@@ -1,10 +1,11 @@
 import AVFoundation
 import CoreLocation
 import EventKit
+import Speech
 import SwiftUI
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, appearance, media, activities, widgets, permissions, about
+    case general, appearance, media, activities, widgets, agents, permissions, about
     var id: String { rawValue }
 
     var icon: String {
@@ -14,6 +15,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .media: "music.note"
         case .activities: "bolt.horizontal.fill"
         case .widgets: "square.grid.2x2.fill"
+        case .agents: "sparkle"
         case .permissions: "lock.shield.fill"
         case .about: "info.circle.fill"
         }
@@ -26,6 +28,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .media: .pink
         case .activities: .orange
         case .widgets: .blue
+        case .agents: .indigo
         case .permissions: .green
         case .about: .secondary
         }
@@ -86,7 +89,20 @@ struct SettingsView: View {
                 }
                 .tag(pane)
             }
-            .navigationSplitViewColumnWidth(190)
+            .safeAreaInset(edge: .top) {
+                HStack(spacing: 10) {
+                    Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 38, height: 38)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Notchy").font(.headline)
+                        Text(UpdateChecker.currentVersion).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
+            }
+            .navigationSplitViewColumnWidth(200)
         } detail: {
             Form {
                 switch selection.pane {
@@ -95,6 +111,7 @@ struct SettingsView: View {
                 case .media: MediaPane()
                 case .activities: ActivitiesPane()
                 case .widgets: WidgetsPane()
+                case .agents: AgentsPane()
                 case .permissions: PermissionsPane()
                 case .about: AboutPane()
                 }
@@ -127,8 +144,27 @@ private struct GeneralPane: View {
                     Text("\(Int(settings.hoverDelay * 1000)) ms").monospacedDigit().foregroundStyle(.secondary).frame(width: 52, alignment: .trailing)
                 }
             }
-            Toggle(L("settings.haptics"), isOn: $settings.haptics)
             Toggle(L("settings.swipe"), isOn: $settings.swipeToChangeTrack)
+        }
+        Section(L("settings.feedback")) {
+            Toggle(L("settings.haptics"), isOn: $settings.haptics)
+            Toggle(L("settings.sounds"), isOn: $settings.sounds)
+            if settings.sounds {
+                LabeledContent(L("settings.soundVolume")) {
+                    Slider(value: $settings.soundVolume, in: 0.05...1) { EmptyView() } onEditingChanged: { editing in
+                        if !editing { Sounds.play(.activity) }
+                    }
+                    .frame(width: 200)
+                }
+            }
+        }
+        Section(L("settings.shortcuts")) {
+            LabeledContent(L("settings.shortcut.notch")) {
+                ShortcutRecorder(shortcut: $settings.toggleNotchShortcut)
+            }
+            LabeledContent(L("settings.shortcut.teleprompter")) {
+                ShortcutRecorder(shortcut: $settings.teleprompterShortcut)
+            }
         }
         Section(L("settings.display")) {
             Picker(L("settings.displayTarget"), selection: $settings.displayTarget) {
@@ -147,7 +183,7 @@ private struct AppearancePane: View {
 
     var body: some View {
         Section(L("settings.style")) {
-            HStack(spacing: 14) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                 ForEach(NotchAppearance.allCases) { style in
                     StyleCard(style: style, selected: settings.appearance == style)
                         .onTapGesture { withAnimation(.snappy) { settings.appearance = style } }
@@ -155,6 +191,28 @@ private struct AppearancePane: View {
             }
             .padding(.vertical, 6)
             Text(L("settings.style.hint")).font(.caption).foregroundStyle(.secondary)
+        }
+        Section(L("settings.size")) {
+            LabeledContent(L("settings.size.width")) {
+                Slider(value: $settings.openWidth, in: 640...1200, step: 10) { EmptyView() }.frame(width: 200)
+                Text("\(Int(settings.openWidth)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 60, alignment: .trailing)
+            }
+            LabeledContent(L("settings.size.height")) {
+                Slider(value: $settings.openHeight, in: 140...240, step: 5) { EmptyView() }.frame(width: 200)
+                Text("\(Int(settings.openHeight)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 60, alignment: .trailing)
+            }
+            HStack {
+                Spacer()
+                Button(L("settings.size.reset")) {
+                    settings.openWidth = AppSettings.defaultOpenWidth
+                    settings.openHeight = AppSettings.defaultOpenHeight
+                }
+                Button(L("settings.size.preview")) { NotchManager.shared.openPrimary() }
+            }
+        }
+        Section(L("settings.privacy")) {
+            Toggle(L("settings.hideFromCapture"), isOn: $settings.hideFromScreenCapture)
+            Text(L("settings.hideFromCapture.hint")).font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -169,7 +227,7 @@ private struct AppearancePane: View {
                     NotchBackground(appearance: style, isOpen: true, shape: NotchShape(topRadius: 6, bottomRadius: 14))
                         .frame(width: 120, height: 44)
                 }
-                .frame(width: 150, height: 80)
+                .frame(width: 190, height: 80)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(selected ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: selected ? 3 : 1))
                 Text(L("settings.style.\(style.rawValue)")).font(.callout.weight(selected ? .semibold : .regular))
@@ -270,6 +328,89 @@ private struct ActivitiesPane: View {
             Toggle(L("settings.activity.capsLock"), isOn: $settings.capsLockActivity)
             Toggle(L("settings.activity.privacy"), isOn: $settings.privacyActivity)
             Toggle(L("settings.activity.meeting"), isOn: $settings.meetingActivity)
+            Toggle(L("settings.activity.deviceBattery"), isOn: $settings.deviceBatteryActivity)
+            Toggle(L("settings.activity.display"), isOn: $settings.displayActivity)
+            Toggle(L("settings.activity.rain"), isOn: $settings.rainAlert)
+            Toggle(L("settings.activity.focus"), isOn: $settings.focusActivity)
+            if settings.focusActivity, !FocusMonitor.hasAccess {
+                Label(L("settings.activity.focus.needsAccess"), systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        }
+    }
+}
+
+private struct AgentsPane: View {
+    @ObservedObject private var settings = AppSettings.shared
+    @State private var claudeState = AgentIntegrations.claudeState
+    @State private var codexState = AgentIntegrations.codexState
+    @State private var error: String?
+
+    var body: some View {
+        Section {
+            Toggle(L("settings.agents.enabled"), isOn: $settings.agentsEnabled)
+            Toggle(L("settings.agents.activity"), isOn: $settings.agentActivity)
+            Toggle(L("settings.agents.usageAlert"), isOn: $settings.usageAlert)
+            if settings.usageAlert {
+                Stepper(L("settings.agents.threshold", settings.usageAlertThreshold), value: $settings.usageAlertThreshold, in: 50...95, step: 5)
+            }
+        }
+        Section {
+            integrationRow(name: "Claude Code", icon: AgentKind.claude.symbol, color: AgentKind.claude.color,
+                           installed: claudeState != .notInstalled,
+                           detail: claudeState == .installedWithoutStatusLine ? L("settings.agents.claude.noStatus") : L("settings.agents.claude.detail")) {
+                if claudeState == .notInstalled { try AgentIntegrations.installClaude() } else { try AgentIntegrations.uninstallClaude() }
+            }
+            integrationRow(name: "Codex", icon: AgentKind.codex.symbol, color: AgentKind.codex.color,
+                           installed: codexState == .installed,
+                           detail: codexDetail, disabled: codexState == .codexMissing || codexState == .otherNotify) {
+                if codexState == .installed { try AgentIntegrations.uninstallCodex() } else { try AgentIntegrations.installCodex() }
+            }
+            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+        } header: {
+            Text(L("settings.agents.integrations"))
+        } footer: {
+            Text(L("settings.agents.footer")).font(.caption).foregroundStyle(.secondary)
+        }
+        Section(L("settings.agents.other")) {
+            Text(L("settings.agents.otherHint")).font(.caption).foregroundStyle(.secondary)
+            Text(#"curl -d '{"agent":"gemini","project":"demo","status":"working","step":"…"}' \#(AgentIntegrations.baseURL)/agent"#)
+                .font(.system(size: 11, design: .monospaced))
+                .textSelection(.enabled)
+        }
+    }
+
+    private var codexDetail: String {
+        switch codexState {
+        case .codexMissing: L("settings.agents.codex.missing")
+        case .otherNotify: L("settings.agents.codex.otherNotify")
+        default: L("settings.agents.codex.detail")
+        }
+    }
+
+    private func integrationRow(name: String, icon: String, color: Color, installed: Bool, detail: String,
+                                disabled: Bool = false, action: @escaping () throws -> Void) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon).foregroundStyle(color).frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(name)
+                    if installed { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).font(.caption) }
+                }
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(installed ? L("settings.agents.disconnect") : L("settings.agents.connect")) {
+                do {
+                    try action()
+                    error = nil
+                } catch {
+                    self.error = error.localizedDescription
+                }
+                claudeState = AgentIntegrations.claudeState
+                codexState = AgentIntegrations.codexState
+            }
+            .disabled(disabled)
         }
     }
 }
@@ -282,6 +423,17 @@ private struct WidgetsPane: View {
     var body: some View {
         Section(L("settings.widgets.calendar")) {
             Toggle(L("settings.widgets.calendar.enabled"), isOn: $settings.calendarEnabled)
+            Toggle(L("settings.widgets.meetingPrep"), isOn: $settings.meetingPrep)
+            if settings.meetingPrep {
+                Stepper(L("settings.widgets.meetingPrep.minutes", settings.meetingPrepMinutes), value: $settings.meetingPrepMinutes, in: 1...10)
+            }
+        }
+        Section(L("settings.widgets.teleprompter")) {
+            Toggle(L("settings.widgets.teleprompter.enabled"), isOn: $settings.teleprompterEnabled)
+            Toggle(L("settings.widgets.teleprompter.voice"), isOn: $settings.teleprompterFollowsVoice)
+            Picker(L("settings.widgets.teleprompter.language"), selection: $settings.teleprompterLanguage) {
+                ForEach(AppLanguage.allCases) { Text($0.label).tag($0) }
+            }
         }
         Section(L("settings.widgets.weather")) {
             Toggle(L("settings.widgets.weather.enabled"), isOn: $settings.weatherEnabled)
@@ -310,7 +462,6 @@ private struct WidgetsPane: View {
         Section(L("settings.widgets.other")) {
             Toggle(L("settings.widgets.shelf"), isOn: $settings.shelfEnabled)
             Toggle(L("settings.widgets.mirror"), isOn: $settings.mirrorEnabled)
-            Toggle(L("settings.widgets.teleprompter"), isOn: $settings.teleprompterEnabled)
         }
     }
 
@@ -346,6 +497,15 @@ private struct PermissionsPane: View {
             }
             row(L("perm.automation"), L("perm.automation.why"), "applescript.fill", nil) {
                 open("Privacy_Automation")
+            }
+            row(L("perm.microphone"), L("perm.microphone.why"), "mic.fill",
+                AVCaptureDevice.authorizationStatus(for: .audio) == .authorized && SFSpeechRecognizer.authorizationStatus() == .authorized) {
+                if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined || SFSpeechRecognizer.authorizationStatus() == .notDetermined {
+                    SFSpeechRecognizer.requestAuthorization { _ in AVCaptureDevice.requestAccess(for: .audio) { _ in } }
+                } else { open("Privacy_Microphone") }
+            }
+            row(L("perm.fullDisk"), L("perm.fullDisk.why"), "internaldrive.fill", FocusMonitor.hasAccess) {
+                open("Privacy_AllFiles")
             }
         } footer: {
             Text(L("perm.footer")).font(.caption).foregroundStyle(.secondary)

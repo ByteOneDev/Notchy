@@ -68,6 +68,10 @@ final class NotchWindowController {
         panel.close()
     }
 
+    func updateFrame() {
+        panel.setFrame(Self.frame(for: screen), display: true)
+    }
+
     private static func frame(for screen: NSScreen) -> NSRect {
         let size = NotchViewModel.canvasSize
         return NSRect(x: screen.frame.midX - size.width / 2, y: screen.frame.maxY - size.height, width: size.width, height: size.height)
@@ -75,7 +79,9 @@ final class NotchWindowController {
 
     /// Area of the screen (bottom-left origin) where the mouse interacts with the notch.
     private func interactiveRect() -> NSRect {
-        let size = viewModel.isOpen ? viewModel.openSize : viewModel.shapeSize
+        var size = viewModel.isOpen ? viewModel.openSize : viewModel.shapeSize
+        // The panel bar floats under the open notch.
+        if viewModel.isOpen { size.height += NotchRootView.tabBarGap + NotchRootView.tabBarHeight }
         // A little slack around the closed notch makes it easier to hit.
         let slackX: CGFloat = viewModel.isOpen ? 12 : 10
         let slackY: CGFloat = viewModel.isOpen ? 12 : 6
@@ -101,6 +107,15 @@ final class NotchWindowController {
     }
 
     private func observeState() {
+        // Keep the notch (calendar, music…) out of screenshots, recordings and screen sharing.
+        AppSettings.shared.$hideFromScreenCapture
+            .sink { [weak self] hide in self?.panel.sharingType = hide ? .none : .readOnly }
+            .store(in: &cancellables)
+        viewModel.$tab
+            .removeDuplicates()
+            .dropFirst()
+            .sink { _ in Haptics.tap() }
+            .store(in: &cancellables)
         viewModel.$state
             .removeDuplicates()
             .sink { [weak self] state in

@@ -63,6 +63,21 @@ struct CompactLayout {
             }
         }
 
+        let agents = AgentHub.shared
+        if agents.isAnyWorking || !agents.pendingPermissions.isEmpty, let session = agents.sessions.first(where: { $0.isWorking }) ?? agents.sessions.first {
+            let waiting = !agents.pendingPermissions.isEmpty
+            return CompactLayout(left: side, right: side) {
+                AgentGlyph(name: session.kind.displayName, size: 14)
+            } trailing: {
+                if waiting {
+                    Image(systemName: "hand.raised.fill").font(.system(size: 12)).foregroundStyle(.orange)
+                        .symbolEffect(.pulse)
+                } else {
+                    ProgressView().controlSize(.mini).tint(session.kind.color)
+                }
+            }
+        }
+
         if pomodoro.isActive {
             return CompactLayout(left: side, right: 62) {
                 Image(systemName: pomodoro.phase.icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(pomodoro.phase.color)
@@ -100,8 +115,8 @@ struct CompactLayout {
             } trailing: {
                 LevelBar(level: Double(level), color: .yellow)
             }
-        case let .battery(level, charging):
-            return CompactLayout(left: 70, right: 70) {
+        case let .battery(level, charging, minutesToFull):
+            let layout = CompactLayout(left: 70, right: 70) {
                 HStack(spacing: 4) {
                     Image(systemName: charging ? "bolt.fill" : "powerplug.fill").foregroundStyle(charging ? .green : .white)
                     Text(charging ? L("battery.charging") : L("battery.unplugged")).font(.system(size: 11, weight: .semibold))
@@ -109,6 +124,10 @@ struct CompactLayout {
             } trailing: {
                 BatteryGlyph(level: level, charging: charging)
             }
+            if charging, let minutesToFull {
+                return layout.withBottom(L("battery.fullIn", BatteryMonitor.durationText(minutes: minutesToFull)))
+            }
+            return layout
         case let .lowBattery(level):
             return CompactLayout(left: side, right: 70) {
                 Image(systemName: "battery.25percent").font(.system(size: 13, weight: .semibold)).foregroundStyle(.red)
@@ -180,6 +199,64 @@ struct CompactLayout {
             } trailing: {
                 Text("\(count)").font(.system(size: 12, weight: .bold)).foregroundStyle(.blue)
             }.withBottom(L("airdrop.sending"))
+        case let .deviceBattery(name, icon, level):
+            return CompactLayout(left: side, right: 62) {
+                Image(systemName: icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+            } trailing: {
+                RingGauge(value: Double(level) / 100, color: .red, label: "\(level)")
+            }.withBottom(name) {
+                Text(L("battery.low")).font(.system(size: 12)).foregroundStyle(.red)
+            }
+        case let .display(name, connected):
+            return CompactLayout(left: side, right: side) {
+                Image(systemName: connected ? "display" : "display.trianglebadge.exclamationmark")
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                    .symbolEffect(.bounce, value: connected)
+            } trailing: {
+                Circle().fill(connected ? Color.blue : Color.gray).frame(width: 7, height: 7)
+            }.withBottom(name) {
+                Text(connected ? L("bluetooth.connected") : L("bluetooth.disconnected"))
+                    .font(.system(size: 12)).foregroundStyle(.secondary)
+            }
+        case let .focus(name, symbol, on):
+            return CompactLayout(left: side, right: 76) {
+                Image(systemName: symbol).font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(on ? .indigo : .white.opacity(0.5))
+                    .symbolEffect(.bounce, value: on)
+            } trailing: {
+                Text(on ? L("focus.on") : L("focus.off")).font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(on ? .indigo : .white.opacity(0.6))
+            }.withBottom(name)
+        case let .rain(minutes, heavy):
+            return CompactLayout(left: side, right: 76) {
+                Image(systemName: heavy ? "cloud.heavyrain.fill" : "cloud.rain.fill").symbolRenderingMode(.multicolor)
+                    .font(.system(size: 14))
+            } trailing: {
+                Text(minutes <= 0 ? L("rain.now") : L("meeting.in", minutes)).font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.cyan)
+            }.withBottom(heavy ? L("rain.heavy") : L("rain.coming"))
+        case let .agentDone(agent, project):
+            return CompactLayout(left: side, right: side) {
+                AgentGlyph(name: agent, size: 14)
+            } trailing: {
+                Image(systemName: "checkmark.circle.fill").font(.system(size: 13)).foregroundStyle(.green)
+                    .symbolEffect(.bounce, value: project)
+            }.withBottom(L("agents.done", agent)) {
+                Text(project).font(.system(size: 12)).foregroundStyle(.secondary)
+            }
+        case let .agentAttention(agent, message):
+            return CompactLayout(left: side, right: side) {
+                AgentGlyph(name: agent, size: 14)
+            } trailing: {
+                Image(systemName: "bell.fill").font(.system(size: 12)).foregroundStyle(.orange)
+                    .symbolEffect(.wiggle, options: .repeat(2))
+            }.withBottom(message)
+        case let .usageWarning(percent, window):
+            return CompactLayout(left: side, right: 62) {
+                Image(systemName: "gauge.with.dots.needle.67percent").font(.system(size: 13, weight: .semibold)).foregroundStyle(.orange)
+            } trailing: {
+                RingGauge(value: Double(percent) / 100, color: percent >= 95 ? .red : .orange, label: "\(percent)")
+            }.withBottom(L("usage.warning", percent, window))
         }
     }
 }

@@ -3,7 +3,7 @@ import SwiftUI
 enum LiveActivityKind: Equatable {
     case volume(level: Float, muted: Bool)
     case brightness(level: Float)
-    case battery(level: Int, charging: Bool)
+    case battery(level: Int, charging: Bool, minutesToFull: Int?)
     case lowBattery(level: Int)
     case bluetooth(name: String, icon: String, connected: Bool, battery: Int?)
     case capsLock(on: Bool)
@@ -14,6 +14,13 @@ enum LiveActivityKind: Equatable {
     case pomodoro(message: String)
     case timerDone
     case airDrop(count: Int)
+    case deviceBattery(name: String, icon: String, level: Int)
+    case display(name: String, connected: Bool)
+    case focus(name: String, symbol: String, on: Bool)
+    case rain(minutes: Int, heavy: Bool)
+    case agentDone(agent: String, project: String)
+    case agentAttention(agent: String, message: String)
+    case usageWarning(percent: Int, window: String)
 
     /// Activities of the same group replace each other instead of queueing (volume ticks…).
     var group: String {
@@ -27,6 +34,12 @@ enum LiveActivityKind: Equatable {
         case .conversion: "conversion"
         case .pomodoro, .timerDone: "timer"
         case .airDrop: "airdrop"
+        case .deviceBattery: "deviceBattery"
+        case .display: "display"
+        case .focus: "focus"
+        case .rain: "rain"
+        case .agentDone, .agentAttention: "agent"
+        case .usageWarning: "usage"
         }
     }
 }
@@ -73,6 +86,7 @@ final class LiveActivityCenter: ObservableObject {
 
     private func present(_ activity: LiveActivity) {
         withAnimation(.notchActivity) { current = activity }
+        if let effect = Sounds.effect(for: activity.kind) { Sounds.play(effect) }
         scheduleDismiss(after: activity.duration)
     }
 
