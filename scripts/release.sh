@@ -22,8 +22,8 @@ ditto build/Notchy.app "$STAGING/Notchy.app"
 ln -s /Applications "$STAGING/Applications"
 hdiutil create -volname "Notchy $VERSION" -srcfolder "$STAGING" -fs HFS+ -format UDZO -ov "$DMG" >/dev/null
 rm -rf "$STAGING"
-IDENTITY=$(codesign -dv build/Notchy.app 2>&1 | sed -n 's/^Authority=//p' | head -1)
-[[ -n "$IDENTITY" ]] && codesign --force --sign "$IDENTITY" --timestamp "$DMG"
+IDENTITY=$(codesign -dvv build/Notchy.app 2>&1 | sed -n 's/^Authority=//p' | head -1)
+if [[ -n "$IDENTITY" ]]; then codesign --force --sign "$IDENTITY" --timestamp "$DMG"; fi
 
 # Check what is about to be published.
 [[ "$(plutil -extract CFBundleShortVersionString raw build/Notchy.app/Contents/Info.plist)" == "$VERSION" ]]
