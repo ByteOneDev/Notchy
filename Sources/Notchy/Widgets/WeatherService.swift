@@ -6,6 +6,23 @@ import SwiftUI
 final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
     static let shared = WeatherService()
 
+    struct RainSlot: Identifiable, Equatable {
+        let date: Date
+        /// Millimeters over the quarter hour.
+        let amount: Double
+        var id: Date { date }
+        var isWet: Bool { amount >= 0.1 }
+    }
+
+    struct Hour: Identifiable, Equatable {
+        let date: Date
+        let temperature: Double
+        let code: Int
+        let isDay: Bool
+        var id: Date { date }
+        var symbol: String { WeatherService.symbol(for: code, isDay: isDay) }
+    }
+
     struct Current: Equatable {
         let temperature: Double
         let code: Int
@@ -19,6 +36,10 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
 
     @Published private(set) var current: Current?
     @Published private(set) var cityName = ""
+    /// Precipitation for the next three hours, by quarter hour.
+    @Published private(set) var rainSlots: [RainSlot] = []
+    /// The coming hours.
+    @Published private(set) var hourly: [Hour] = []
     private let locationManager = CLLocationManager()
     private var timer: Timer?
     private var rainAnnounced = false
@@ -73,8 +94,10 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
                 URLQueryItem(name: "longitude", value: String(longitude)),
                 URLQueryItem(name: "current", value: "temperature_2m,weather_code,is_day"),
                 URLQueryItem(name: "daily", value: "temperature_2m_max,temperature_2m_min"),
+                URLQueryItem(name: "hourly", value: "temperature_2m,weather_code,is_day"),
+                URLQueryItem(name: "forecast_hours", value: "10"),
                 URLQueryItem(name: "minutely_15", value: "precipitation"),
-                URLQueryItem(name: "forecast_minutely_15", value: "12"),
+                URLQueryItem(name: "forecast_minutely_15", value: "14"),
                 URLQueryItem(name: "forecast_days", value: "1"),
                 URLQueryItem(name: "timezone", value: "auto"),
                 URLQueryItem(name: "timeformat", value: "unixtime"),
@@ -84,6 +107,15 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
                   let current = json["current"] as? [String: Any],
                   let daily = json["daily"] as? [String: Any] else { return }
             checkRain(json["minutely_15"] as? [String: Any])
+            if let hours = json["hourly"] as? [String: Any], let times = hours["time"] as? [Double],
+               let temperatures = hours["temperature_2m"] as? [Double], let codes = hours["weather_code"] as? [Int],
+               let days = hours["is_day"] as? [Int], times.count == temperatures.count,
+               times.count == codes.count, times.count == days.count {
+                let now = Date.now.timeIntervalSince1970
+                hourly = times.indices.filter { times[$0] > now }.map {
+                    Hour(date: Date(timeIntervalSince1970: times[$0]), temperature: temperatures[$0], code: codes[$0], isDay: days[$0] == 1)
+                }
+            }
             self.current = Current(
                 temperature: current["temperature_2m"] as? Double ?? 0,
                 code: current["weather_code"] as? Int ?? 0,
@@ -100,6 +132,8 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
         guard let times = minutely?["time"] as? [Double],
               let amounts = minutely?["precipitation"] as? [Double], times.count == amounts.count else { return }
         let now = Date.now.timeIntervalSince1970
+        rainSlots = zip(times, amounts).filter { $0.0 + 15 * 60 > now }.prefix(12)
+            .map { RainSlot(date: Date(timeIntervalSince1970: $0.0), amount: $0.1) }
         let upcoming = zip(times, amounts).filter { $0.0 + 15 * 60 > now && $0.0 < now + 75 * 60 }
         let wet = upcoming.filter { $0.1 >= 0.1 }
         guard let first = wet.first else {
@@ -169,23 +203,47 @@ final class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegat
     }
 }
 
-struct WeatherDetailView: View {
+/// Now on the left, the coming hours below. Wide when it is alone on the home panel.
+struct WeatherWidget: View {
+    var wide = false
     @ObservedObject private var weather = WeatherService.shared
 
     var body: some View {
-        if let current = weather.current {
-            HStack(spacing: 14) {
-                Image(systemName: current.symbol).symbolRenderingMode(.multicolor).font(.system(size: 40))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(current.temperatureText).font(.system(size: 30, weight: .semibold))
-                    Text("\(weather.cityName) · \(WeatherService.description(for: current.code))")
-                        .font(.system(size: 12)).foregroundStyle(.white.opacity(0.6))
-                    Text("↑ \(WeatherService.format(current.high))  ↓ \(WeatherService.format(current.low))")
-                        .font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            WidgetHeader(widget: .weather) {
+                Text(weather.cityName).font(.system(size: 10)).foregroundStyle(.white.opacity(0.45)).lineLimit(1)
             }
-        } else {
-            ProgressView().controlSize(.small)
+            if let current = weather.current {
+                HStack(spacing: 10) {
+                    Image(systemName: current.symbol).symbolRenderingMode(.multicolor).font(.system(size: wide ? 34 : 28))
+                    Text(current.temperatureText).font(.system(size: wide ? 36 : 30, weight: .semibold)).fixedSize()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(WeatherService.description(for: current.code)).font(.system(size: 12, weight: .medium))
+                        Text("↑ \(WeatherService.format(current.high))  ↓ \(WeatherService.format(current.low))")
+                            .font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    Spacer(minLength: 0)
+                }
+                Spacer(minLength: 0)
+                HStack(spacing: 0) {
+                    ForEach(weather.hourly.prefix(wide ? 10 : 4)) { hour in
+                        VStack(spacing: 4) {
+                            Text(hour.date.formatted(.dateTime.hour(.twoDigits(amPM: .abbreviated)).locale(Loc.locale)))
+                                .font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.5))
+                                .lineLimit(1).fixedSize()
+                            Image(systemName: hour.symbol).symbolRenderingMode(.multicolor).font(.system(size: 13))
+                                .frame(height: 16)
+                            Text(WeatherService.format(hour.temperature)).font(.system(size: 11, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            } else {
+                ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }

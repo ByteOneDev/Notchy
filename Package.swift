@@ -18,6 +18,7 @@ let package = Package(
                 .linkedFramework("CoreLocation"),
                 .linkedFramework("AVFoundation"),
                 .linkedFramework("ServiceManagement"),
+                .linkedFramework("CoreWLAN"),
             ]
         )
     ]

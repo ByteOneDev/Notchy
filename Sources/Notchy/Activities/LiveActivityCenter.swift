@@ -26,11 +26,16 @@ enum LiveActivityKind: Equatable {
     case agentAttention(agent: String, message: String)
     case usageWarning(percent: Int, window: String)
     case update(version: String, state: UpdateState)
+    case download(name: String, progress: Double, count: Int)
+    case keyboard(level: Float)
+    case network(name: String, symbol: String, connected: Bool)
+    case mode(name: String, symbol: String, on: Bool)
+    case shortcut(name: String, icon: String, failed: Bool)
 
     /// Activities of the same group replace each other instead of queueing (volume ticks…).
     var group: String {
         switch self {
-        case .volume, .brightness: "hud"
+        case .volume, .brightness, .keyboard: "hud"
         case .battery, .lowBattery: "battery"
         case .bluetooth: "bluetooth"
         case .capsLock: "caps"
@@ -46,6 +51,20 @@ enum LiveActivityKind: Equatable {
         case .agentDone, .agentAttention: "agent"
         case .usageWarning: "usage"
         case .update: "update"
+        case .download: "download"
+        case .network: "network"
+        case .mode: "mode"
+        case .shortcut: "shortcut"
+        }
+    }
+
+    /// What still shows while a mode asks for calm: direct feedback and what can't wait.
+    var passesSilence: Bool {
+        switch self {
+        case .volume, .brightness, .keyboard, .capsLock, .lowBattery, .meeting, .conversion, .pomodoro, .timerDone,
+             .airDrop, .agentAttention, .usageWarning, .download, .mode, .shortcut: true
+        case .battery, .bluetooth, .camera, .microphone, .deviceBattery, .display, .focus, .rain, .agentDone,
+             .update, .network: false
         }
     }
 }
@@ -66,6 +85,7 @@ final class LiveActivityCenter: ObservableObject {
     private var dismissWork: DispatchWorkItem?
 
     func show(_ kind: LiveActivityKind, duration: TimeInterval = 2.2) {
+        if ModeEngine.shared.isSilenced, !kind.passesSilence { return }
         if var current, current.kind.group == kind.group {
             // Same kind of activity: update in place and extend, without re-animating.
             current.kind = kind

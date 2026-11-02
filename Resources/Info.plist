@@ -35,6 +35,10 @@
 	<string>Notchy affiche la connexion et la batterie de tes écouteurs.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Notchy affiche tes événements à venir dans le notch.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Notchy affiche tes tâches des Rappels dans le notch et te permet de les cocher.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>Notchy affiche tes tâches des Rappels dans le notch et te permet de les cocher.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Notchy affiche tes événements à venir dans le notch.</string>
 	<key>NSCameraUsageDescription</key>

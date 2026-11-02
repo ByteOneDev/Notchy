@@ -267,6 +267,52 @@ struct CompactLayout {
                 Text(version).font(.system(size: 11, weight: .semibold).monospacedDigit()).foregroundStyle(.white)
             }.withBottom(state == .installed ? L("update.done", version)
                          : state == .installing ? L("update.installing", version) : L("update.available", version))
+        case let .download(name, progress, count):
+            let done = progress >= 1
+            return CompactLayout(left: side, right: 62) {
+                Image(systemName: done ? "checkmark.circle.fill" : "arrow.down.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(done ? .green : .blue)
+                    .contentTransition(.symbolEffect(.replace))
+            } trailing: {
+                RingGauge(value: progress, color: done ? .green : .blue, label: done ? "✓" : "\(Int(progress * 100))")
+            }.withBottom(done ? L("download.done") : name) {
+                if !done, count > 1 { Text("+\(count - 1)").font(.system(size: 12)).foregroundStyle(.secondary) }
+            }
+        case let .keyboard(level):
+            return CompactLayout(left: side, right: 110) {
+                Image(systemName: level < 0.01 ? "light.min" : "light.max").font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                    .contentTransition(.symbolEffect(.replace))
+            } trailing: {
+                LevelBar(level: Double(level), color: .white)
+            }
+        case let .network(name, symbol, connected):
+            return CompactLayout(left: side, right: side) {
+                Image(systemName: symbol).font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(connected ? .blue : .white.opacity(0.6))
+                    .symbolEffect(.bounce, value: connected)
+            } trailing: {
+                Circle().fill(connected ? Color.blue : Color.gray).frame(width: 7, height: 7)
+            }.withBottom(name) {
+                Text(connected ? L("bluetooth.connected") : L("bluetooth.disconnected"))
+                    .font(.system(size: 12)).foregroundStyle(.secondary)
+            }
+        case let .mode(name, symbol, on):
+            return CompactLayout(left: side, right: 76) {
+                Image(systemName: symbol).font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(on ? .purple : .white.opacity(0.5))
+                    .symbolEffect(.bounce, value: on)
+            } trailing: {
+                Text(on ? L("focus.on") : L("focus.off")).font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(on ? .purple : .white.opacity(0.6))
+            }.withBottom(name)
+        case let .shortcut(name, icon, failed):
+            return CompactLayout(left: side, right: side) {
+                Image(systemName: icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+            } trailing: {
+                Image(systemName: failed ? "xmark.circle.fill" : "checkmark.circle.fill").font(.system(size: 13))
+                    .foregroundStyle(failed ? .red : .green)
+            }.withBottom(failed ? L("shortcuts.failed", name) : L("shortcuts.done", name))
         }
     }
 }

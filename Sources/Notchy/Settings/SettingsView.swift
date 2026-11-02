@@ -5,7 +5,7 @@ import Speech
 import SwiftUI
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, features, appearance, media, activities, widgets, agents, permissions, about
+    case general, features, appearance, media, activities, widgets, modes, agents, permissions, about
     var id: String { rawValue }
 
     var icon: String {
@@ -16,6 +16,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .media: "music.note"
         case .activities: "bolt.horizontal.fill"
         case .widgets: "square.grid.2x2.fill"
+        case .modes: "moon.stars.fill"
         case .agents: "sparkle"
         case .permissions: "lock.shield.fill"
         case .about: "info.circle.fill"
@@ -30,6 +31,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .media: .pink
         case .activities: .orange
         case .widgets: .blue
+        case .modes: .purple
         case .agents: .indigo
         case .permissions: .green
         case .about: .secondary
@@ -114,6 +116,7 @@ struct SettingsView: View {
                 case .media: MediaPane()
                 case .activities: ActivitiesPane()
                 case .widgets: WidgetsPane()
+                case .modes: ModesPane()
                 case .agents: AgentsPane()
                 case .permissions: PermissionsPane()
                 case .about: AboutPane()
@@ -430,6 +433,9 @@ private struct WidgetsPane: View {
     @State private var cityError = false
 
     var body: some View {
+        HomeLayoutSection()
+        ShortcutTilesSection()
+        TasksSettingsSection()
         Section(L("settings.widgets.calendar")) {
             Toggle(L("settings.widgets.calendar.enabled"), isOn: $settings.calendarEnabled)
             Toggle(L("settings.widgets.meetingPrep"), isOn: $settings.meetingPrep)

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct OpenNotchView: View {
     @ObservedObject var viewModel: NotchViewModel
+    /// Home widgets to show instead of the settings' (snapshots).
+    var homeOverride: [HomeWidget]?
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var weather = WeatherService.shared
     @ObservedObject private var battery = BatteryMonitor.shared
@@ -59,7 +61,7 @@ struct OpenNotchView: View {
 
     @ViewBuilder private var content: some View {
         switch viewModel.tab {
-        case .home: HomeView()
+        case .home: HomeView(override: homeOverride)
         case .music: MusicPanel()
         case .calendar: CalendarPanel()
         case .shelf: ShelfView()
@@ -113,29 +115,6 @@ struct HoverButtonStyle: ButtonStyle {
                 .onChange(of: configuration.isPressed) { _, pressed in if pressed { Haptics.tap() } }
                 .animation(.easeOut(duration: 0.12), value: hovering)
                 .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
-        }
-    }
-}
-
-struct HomeView: View {
-    @ObservedObject private var settings = AppSettings.shared
-
-    var body: some View {
-        HStack(spacing: 18) {
-            if settings.mediaEnabled {
-                MediaPlayerView()
-                    .frame(width: settings.calendarEnabled ? 380 : nil)
-                    .frame(maxWidth: settings.calendarEnabled ? nil : .infinity)
-            }
-            if settings.mediaEnabled && settings.calendarEnabled {
-                Rectangle().fill(Color.white.opacity(0.1)).frame(width: 1).padding(.vertical, 6)
-            }
-            if settings.calendarEnabled {
-                CalendarWidget()
-            }
-            if !settings.mediaEnabled && !settings.calendarEnabled {
-                WeatherDetailView().frame(maxWidth: .infinity)
-            }
         }
     }
 }

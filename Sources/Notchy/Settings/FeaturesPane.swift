@@ -17,6 +17,19 @@ struct FeaturesPane: View {
             row("person.crop.square.fill", .green, "features.mirror", $settings.mirrorEnabled)
             row("cloud.sun.fill", .cyan, "features.weather", $settings.weatherEnabled)
         }
+        Section {
+            ForEach(HomeWidget.allCases) { widget in
+                Toggle(isOn: Binding(get: { settings.homeWidgets.contains(widget.rawValue) },
+                                     set: { settings.setHomeWidget(widget, shown: $0) })) {
+                    label(widget.icon, widget.color, widget.title)
+                }
+                .disabled(!settings.homeWidgets.contains(widget.rawValue) && settings.homeWidgets.count >= HomeWidget.maxShown)
+            }
+        } header: {
+            Text(L("features.home"))
+        } footer: {
+            Text(L("features.home.footer", HomeWidget.maxShown)).font(.caption).foregroundStyle(.secondary)
+        }
         Section(L("features.music")) {
             row("speaker.wave.2.fill", .pink, "features.allSources", $settings.allAudioSources)
             row("circle.dashed", .pink, "features.glow", $settings.audioGlow)
@@ -39,9 +52,15 @@ struct FeaturesPane: View {
             row("capslock.fill", .gray, "features.capsLock", $settings.capsLockActivity)
             row("checkmark.seal.fill", .indigo, "features.agentActivity", $settings.agentActivity)
             row("gauge.with.dots.needle.67percent", .orange, "features.usageAlert", $settings.usageAlert)
+            row("arrow.down.circle.fill", .blue, "features.downloads", $settings.downloadsActivity)
+            row("light.max", .gray, "features.keyboardHUD", $settings.keyboardHUD)
+            row("wifi", .blue, "features.networkHUD", $settings.networkHUD)
         }
         Section(L("features.system")) {
             row("lock.fill", .gray, "features.lockScreen", $settings.showOnLockScreen)
+            row("moon.stars.fill", .purple, "features.modes", $settings.modesEnabled)
+            row("display.2", .blue, "features.externalNotch",
+                Binding(get: { settings.notchOnExternalDisplays }, set: { settings.notchOnExternalDisplays = $0 }))
             row("arrow.up.left.and.arrow.down.right", .gray, "features.hideFullscreen", $settings.hideInFullscreen)
             row("eye.slash.fill", .gray, "features.hideFromCapture", $settings.hideFromScreenCapture)
             row("cursorarrow.motionlines", .gray, "features.hover", $settings.openOnHover)
@@ -54,15 +73,28 @@ struct FeaturesPane: View {
     }
 
     private func row(_ icon: String, _ color: Color, _ key: String, _ isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 22, height: 22)
-                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(color.gradient))
-                Text(L(key))
-            }
+        Toggle(isOn: isOn) { label(icon, color, L(key)) }
+    }
+
+    private func label(_ icon: String, _ color: Color, _ text: String) -> some View {
+        SettingsIconLabel(icon: icon, color: color, text: text)
+    }
+}
+
+/// A colored rounded icon followed by a title, like in System Settings.
+struct SettingsIconLabel: View {
+    let icon: String
+    let color: Color
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 22, height: 22)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(color.gradient))
+            Text(text)
         }
     }
 }

@@ -18,8 +18,8 @@ struct MusicPanel: View {
                         .onTapGesture { media.openSourceApp() }
                     SourceBadge(track: track).offset(x: 6, y: 6)
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .center) {
                         VStack(alignment: .leading, spacing: 2) {
                             MarqueeText(text: track.title, font: .system(size: 17, weight: .semibold))
                             Text(track.artist.isEmpty ? track.album : track.artist)
@@ -32,15 +32,18 @@ struct MusicPanel: View {
                     }
                     TimelineView(.periodic(from: .now, by: 0.5)) { context in
                         let position = track.position(at: context.date)
-                        VStack(alignment: .leading, spacing: 5) {
+                        VStack(alignment: .leading, spacing: 6) {
                             lyricLines(at: position)
-                            Spacer(minLength: 0)
                             Scrubber(position: position, duration: track.duration, color: media.accent) { media.seek(to: $0) }
                         }
                     }
+                    .padding(.top, 10)
                     controls(track)
+                        .padding(.top, 4)
                 }
+                .frame(minWidth: 0, maxWidth: .infinity)
             }
+            .frame(maxHeight: .infinity)
         } else {
             MediaPlayerView()
         }

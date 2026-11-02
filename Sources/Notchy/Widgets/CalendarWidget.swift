@@ -19,12 +19,19 @@ struct CalendarWidget: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(selected.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(settings.language.locale)).capitalized)
                     .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(1)
                     .contentTransition(.numericText())
                 Spacer()
+                let hidden = service.events(on: selected).count - 2
+                if service.authorized, hidden > 0 {
+                    Text(L("calendar.more", hidden))
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
                 if !calendar.isDateInToday(selected) {
                     Button(L("calendar.today")) {
                         withAnimation(.snappy) { service.selectedDay = calendar.startOfDay(for: .now) }
@@ -58,7 +65,8 @@ struct CalendarWidget: View {
             }
         }
         .frame(height: 42)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // The strip is cut at the edge rather than widening the panel when space is short.
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
         .clipped()
         .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.08),
                                      .init(color: .black, location: 0.85), .init(color: .clear, location: 1)],
@@ -79,12 +87,6 @@ struct CalendarWidget: View {
             let shown = Array(events.prefix(2))
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(shown) { EventRow(event: $0, locale: settings.language.locale) }
-                if events.count > shown.count {
-                    Text(L("calendar.more", events.count - shown.count))
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.45))
-                        .padding(.leading, 11)
-                }
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

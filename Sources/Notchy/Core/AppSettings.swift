@@ -115,6 +115,15 @@ final class AppSettings: ObservableObject {
     @Published var sounds: Bool { didSet { save(sounds, "sounds") } }
     @Published var soundVolume: Double { didSet { save(soundVolume, "soundVolume") } }
 
+    // Home, modes and extra activities (all off by default)
+    @Published var homeWidgets: [String] { didSet { save(homeWidgets, "homeWidgets") } }
+    @Published var shortcutTiles: [ShortcutTile] { didSet { saveCodable(shortcutTiles, "shortcutTiles") } }
+    @Published var modesEnabled: Bool { didSet { save(modesEnabled, "modesEnabled") } }
+    @Published var modes: [ModeRule] { didSet { saveCodable(modes, "modes") } }
+    @Published var downloadsActivity: Bool { didSet { save(downloadsActivity, "downloadsActivity") } }
+    @Published var keyboardHUD: Bool { didSet { save(keyboardHUD, "keyboardHUD") } }
+    @Published var networkHUD: Bool { didSet { save(networkHUD, "networkHUD") } }
+
     // Keyboard shortcuts
     @Published var toggleNotchShortcut: KeyboardShortcutSetting? { didSet { saveShortcut(toggleNotchShortcut, "toggleNotchShortcut") } }
     @Published var teleprompterShortcut: KeyboardShortcutSetting? { didSet { saveShortcut(teleprompterShortcut, "teleprompterShortcut") } }
@@ -207,6 +216,13 @@ final class AppSettings: ObservableObject {
         hideFromScreenCapture = value("hideFromScreenCapture", true)
         sounds = value("sounds", true)
         soundVolume = value("soundVolume", 0.3)
+        homeWidgets = value("homeWidgets", [HomeWidget.media.rawValue, HomeWidget.calendar.rawValue])
+        shortcutTiles = Self.loadCodable("shortcutTiles") ?? []
+        modesEnabled = value("modesEnabled", false)
+        modes = Self.loadCodable("modes") ?? ModeRule.defaults
+        downloadsActivity = value("downloadsActivity", false)
+        keyboardHUD = value("keyboardHUD", false)
+        networkHUD = value("networkHUD", false)
         toggleNotchShortcut = Self.loadShortcut("toggleNotchShortcut") ?? KeyboardShortcutSetting.defaultToggleNotch
         teleprompterShortcut = Self.loadShortcut("teleprompterShortcut") ?? nil
         isLoaded = true
@@ -215,6 +231,36 @@ final class AppSettings: ObservableObject {
 
     private func save(_ value: Any, _ key: String) {
         defaults.set(value, forKey: key)
+    }
+
+    private func saveCodable<T: Encodable>(_ value: T, _ key: String) {
+        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
+    }
+
+    private static func loadCodable<T: Decodable>(_ key: String) -> T? {
+        UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(T.self, from: $0) }
+    }
+
+    /// A notch on the external displays too (simulated where there is no hardware notch).
+    var notchOnExternalDisplays: Bool {
+        get { displayTarget == .all }
+        set { displayTarget = newValue ? .all : .builtIn }
+    }
+
+    /// Adds or removes a widget from the home panel (at most `HomeWidget.maxShown`).
+    func setHomeWidget(_ widget: HomeWidget, shown: Bool) {
+        if shown, !homeWidgets.contains(widget.rawValue), homeWidgets.count < HomeWidget.maxShown {
+            homeWidgets.append(widget.rawValue)
+        } else if !shown {
+            homeWidgets.removeAll { $0 == widget.rawValue }
+        }
+    }
+
+    func moveHomeWidget(_ widget: HomeWidget, by offset: Int) {
+        guard let index = homeWidgets.firstIndex(of: widget.rawValue) else { return }
+        let target = index + offset
+        guard homeWidgets.indices.contains(target) else { return }
+        homeWidgets.swapAt(index, target)
     }
 
     /// Optional properties assigned at the end of init still fire their observers: ignore those.

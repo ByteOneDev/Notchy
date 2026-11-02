@@ -32,9 +32,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         DisplayMonitor.shared.start()
         FocusMonitor.shared.start()
         AgentHub.shared.start()
+        TasksService.shared.start()
+        DownloadMonitor.shared.start()
+        KeyboardBacklightMonitor.shared.start()
+        NetworkChangeMonitor.shared.start()
+        ModeEngine.shared.start()
         HotKeyCenter.shared.start()
         UpdateChecker.shared.start()
         NotchManager.shared.start()
+        Snapshots.runIfRequested()
 
         AppSettings.shared.$showMenuBarIcon
             .sink { [weak self] show in self?.setStatusItemVisible(show) }

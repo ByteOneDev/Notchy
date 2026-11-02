@@ -66,7 +66,14 @@ struct CalendarPanel: View {
                                     .foregroundStyle(.white.opacity(0.4))
                                     .padding(.top, 2)
                             }
-                            ForEach(section.events.prefix(2)) { EventCard(event: $0, locale: settings.language.locale) }
+                            ForEach(section.events) { EventCard(event: $0, locale: settings.language.locale) }
+                        }
+                        let hidden = service.events(on: service.selectedDay).count - (sections.first?.events.count ?? 0)
+                        if calendar.isDate(sections[0].day, inSameDayAs: service.selectedDay), hidden > 0 {
+                            Text(L("calendar.more", hidden))
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.45))
+                                .padding(.leading, 12)
                         }
                     }
                 }

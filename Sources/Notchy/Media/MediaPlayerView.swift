@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MediaPlayerView: View {
+    /// Narrow column (three widgets on the home panel): smaller artwork.
+    var compact = false
     @ObservedObject private var media = NowPlayingService.shared
     @ObservedObject private var lyrics = LyricsService.shared
     @ObservedObject private var settings = AppSettings.shared
@@ -13,10 +15,12 @@ struct MediaPlayerView: View {
         }
     }
 
+    /// Packed and centered as one block, the artwork as tall as the text beside it: no gap
+    /// between the title and the scrubber, whatever the panel height.
     private func player(_ track: NowPlayingTrack) -> some View {
         HStack(spacing: 14) {
             ZStack(alignment: .bottomTrailing) {
-                ArtworkView(image: media.artwork, size: 96, radius: 16, isLogo: media.isLogoArtwork, tint: media.accent)
+                ArtworkView(image: media.artwork, size: artworkSize, radius: 16, isLogo: media.isLogoArtwork, tint: media.accent)
                     .shadow(color: media.accent.opacity(track.isPlaying ? 0.55 : 0.2), radius: 14)
                     .scaleEffect(track.isPlaying ? 1 : 0.92)
                     .animation(.spring(response: 0.4, dampingFraction: 0.6), value: track.isPlaying)
@@ -24,8 +28,8 @@ struct MediaPlayerView: View {
                 SourceBadge(track: track)
                     .offset(x: 6, y: 6)
             }
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .center, spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
                         MarqueeText(text: track.title, font: .system(size: 14, weight: .semibold))
                         Text(track.artist.isEmpty ? track.album : track.artist)
@@ -33,7 +37,6 @@ struct MediaPlayerView: View {
                             .foregroundStyle(.white.opacity(0.6))
                             .lineLimit(1)
                     }
-                    Spacer(minLength: 4)
                     if settings.showVisualizer {
                         AudioVisualizer(color: media.accent, playing: track.isPlaying, bars: 5)
                     }
@@ -49,15 +52,20 @@ struct MediaPlayerView: View {
                                 .transition(.push(from: .bottom))
                                 .id(line)
                         }
-                        Spacer(minLength: 0)
                         Scrubber(position: position, duration: track.duration, color: media.accent) { media.seek(to: $0) }
                     }
                     .animation(.easeOut(duration: 0.25), value: lyrics.line(at: position))
                 }
+                .padding(.top, 10)
                 controls(track)
+                    .padding(.top, 4)
             }
+            .frame(minWidth: 0, maxWidth: .infinity)
         }
+        .frame(maxHeight: .infinity)
     }
+
+    private var artworkSize: CGFloat { compact ? 88 : 108 }
 
     private func controls(_ track: NowPlayingTrack) -> some View {
         HStack(spacing: 18) {
@@ -83,7 +91,7 @@ struct MediaPlayerView: View {
                 RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.08))
                 Image(systemName: "music.note").font(.system(size: 30)).foregroundStyle(.white.opacity(0.4))
             }
-            .frame(width: 96, height: 96)
+            .frame(width: artworkSize, height: artworkSize)
             VStack(alignment: .leading, spacing: 4) {
                 Text(L("media.nothing")).font(.system(size: 14, weight: .semibold))
                 Text(L("media.hint")).font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
@@ -91,6 +99,7 @@ struct MediaPlayerView: View {
             }
             Spacer(minLength: 0)
         }
+        .frame(maxHeight: .infinity)
     }
 }
 

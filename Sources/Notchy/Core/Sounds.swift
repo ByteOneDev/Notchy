@@ -22,17 +22,17 @@ enum Sounds {
 
     static func play(_ effect: Effect) {
         let settings = AppSettings.shared
-        guard settings.sounds, let sound = NSSound(named: effect.name)?.copy() as? NSSound else { return }
+        guard settings.sounds, !ModeEngine.shared.isSilenced, let sound = NSSound(named: effect.name)?.copy() as? NSSound else { return }
         sound.volume = Float(settings.soundVolume)
         sound.play()
     }
 
     static func effect(for kind: LiveActivityKind) -> Effect? {
         switch kind {
-        case .volume, .brightness, .capsLock, .conversion, .pomodoro, .timerDone: nil
+        case .volume, .brightness, .keyboard, .capsLock, .conversion, .pomodoro, .timerDone, .download, .shortcut: nil
         case .lowBattery, .deviceBattery, .meeting, .rain, .usageWarning, .agentAttention: .alert
         case .agentDone, .update: .activity
-        case .battery, .bluetooth, .camera, .microphone, .airDrop, .display, .focus: .activity
+        case .battery, .bluetooth, .camera, .microphone, .airDrop, .display, .focus, .network, .mode: .activity
         }
     }
 }

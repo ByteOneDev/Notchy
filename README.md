@@ -15,13 +15,21 @@ Sous le notch ouvert, une barre flottante donne accès aux panneaux : **Nook** (
 - **Agents IA** : ce que fait Claude Code (étapes, messages), **accepter ou refuser ses demandes d'autorisation** depuis le notch, limites d'usage (5 h / semaine) avec **alerte à 80 %**. Codex en partie, et tout autre outil via `POST http://127.0.0.1:47812/agent`.
 - **Minuteur et pomodoro**, **miroir** (qui s'ouvre tout seul avant un appel vidéo), **météo**.
 
+## Accueil personnalisable
+
+Jusqu'à 3 widgets, dans l'ordre choisi : musique, calendrier, météo (avec les prochaines heures), **pluie** des 3 prochaines heures, **tâches** (Rappels d'Apple, à cocher ou ajouter depuis le notch), **raccourcis** (tes Raccourcis Mac et tes scripts shell en tuiles, dépose un fichier sur une tuile pour le lui donner) et **réseau** (IP locale et publique copiables, VPN, test de débit, ports ouverts).
+
+## Modes
+
+Désactivés par défaut. Un mode se déclenche tout seul (pendant un Pomodoro, pendant un appel vidéo du calendrier, à heures fixes, quand une app est devant, quand un écran externe est branché) et applique ses actions : calme (pas de sons, seulement les alertes importantes), musique en pause, un Raccourci au début et un à la fin (par exemple pour activer une Concentration de macOS). **Focus** et **Réunion** sont prêts à l'emploi.
+
 ## Live activities
 
-Charge (avec temps restant) et batterie faible, écouteurs Bluetooth, batterie faible des souris, claviers et AirPods, écran externe, mode Concentration, alerte pluie, réunion imminente, caméra et micro, verrouillage majuscules, conversion, agents IA. Plus les **HUD volume et luminosité** et l'affichage sur l'**écran verrouillé**.
+Charge (avec temps restant) et batterie faible, écouteurs Bluetooth, batterie faible des souris, claviers et AirPods, écran externe, mode Concentration, alerte pluie, réunion imminente, caméra et micro, verrouillage majuscules, conversion, agents IA. En option : **téléchargements en cours**, **Wi-Fi et VPN**. Plus les **HUD volume, luminosité et rétroéclairage du clavier** et l'affichage sur l'**écran verrouillé**.
 
 ## Réglages
 
-Toutes les fonctions s'activent ou se désactivent depuis **Réglages → Fonctionnalités**. 4 styles (noir, semi-transparent, transparent, **Liquid Glass**), largeur et hauteur du notch, raccourcis clavier globaux, sons discrets et retour haptique, masquage dans les captures et partages d'écran, notch caché en plein écran, interface en français (par défaut) et en anglais.
+Toutes les fonctions s'activent ou se désactivent depuis **Réglages → Fonctionnalités**. 4 styles (noir, semi-transparent, transparent, **Liquid Glass**), largeur et hauteur du notch, raccourcis clavier globaux, sons discrets et retour haptique, masquage dans les captures et partages d'écran, notch caché en plein écran, encoche simulée sur les écrans externes, interface en français (par défaut) et en anglais.
 
 ## Compiler
 

@@ -111,6 +111,16 @@ final class NowPlayingService: ObservableObject {
     // MARK: Controls
 
     func togglePlayPause() { activeSource?.send(.toggle) }
+    func play() { activeSource?.send(.play) }
+
+    /// A made-up track, so snapshots show the player when nothing is playing.
+    func showSampleTrack() {
+        guard track == nil else { return }
+        track = NowPlayingTrack(title: "Midnight City", artist: "M83", album: "Hurry Up, We're Dreaming", duration: 243,
+                                elapsed: 71, elapsedAt: .now, isPlaying: true, bundleID: "com.spotify.client")
+        accent = .purple
+    }
+    func pause() { activeSource?.send(.pause) }
     func next() { activeSource?.send(.next) }
     func previous() { activeSource?.send(.previous) }
     func seek(to time: TimeInterval) { activeSource?.seek(to: time) }
