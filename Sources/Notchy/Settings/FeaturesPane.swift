@@ -49,6 +49,7 @@ struct FeaturesPane: View {
             row("hand.tap.fill", .gray, "features.haptics", $settings.haptics)
             row("speaker.fill", .gray, "features.sounds", $settings.sounds)
             row("menubar.rectangle", .gray, "features.menuBar", $settings.showMenuBarIcon)
+            row("arrow.down.circle.fill", .blue, "features.autoUpdate", $settings.autoInstallUpdates)
         }
     }
 

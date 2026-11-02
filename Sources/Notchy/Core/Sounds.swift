@@ -31,7 +31,7 @@ enum Sounds {
         switch kind {
         case .volume, .brightness, .capsLock, .conversion, .pomodoro, .timerDone: nil
         case .lowBattery, .deviceBattery, .meeting, .rain, .usageWarning, .agentAttention: .alert
-        case .agentDone: .activity
+        case .agentDone, .update: .activity
         case .battery, .bluetooth, .camera, .microphone, .airDrop, .display, .focus: .activity
         }
     }

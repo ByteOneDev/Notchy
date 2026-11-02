@@ -339,6 +339,7 @@ enum Strings {
         "features.haptics": ("Retour haptique", "Haptic feedback"),
         "features.sounds": ("Sons", "Sounds"),
         "features.menuBar": ("Icône dans la barre des menus", "Menu bar icon"),
+        "features.autoUpdate": ("Mises à jour automatiques", "Automatic updates"),
 
         // About & updates
         "about.version": ("Version %@", "Version %@"),
@@ -347,5 +348,34 @@ enum Strings {
         "update.failed": ("Impossible de vérifier les mises à jour", "Couldn't check for updates"),
         "update.available": ("Version %@ disponible", "Version %@ available"),
         "update.upToDate": ("Notchy est à jour", "Notchy is up to date"),
+        "update.title": ("Mises à jour", "Updates"),
+        "update.installing": ("Installation de la version %@…", "Installing version %@…"),
+        "update.done": ("Notchy mis à jour en %@", "Notchy updated to %@"),
+        "update.installNow": ("Installer et relancer", "Install and Relaunch"),
+        "update.installFailed": ("La mise à jour n'a pas pu être installée", "The update couldn't be installed"),
+        "update.permission": ("La mise à jour a été bloquée par macOS. Autorise Notchy dans Réglages Système → Confidentialité → Gestion des apps, puis réessaie.",
+                              "macOS blocked the update. Allow Notchy in System Settings → Privacy → App Management, then try again."),
+        "update.autoCheck": ("Rechercher les mises à jour automatiquement", "Check for updates automatically"),
+        "update.autoInstall": ("Installer automatiquement (relance discrète quand tu n'utilises pas le notch)",
+                               "Install automatically (quiet relaunch while you're not using the notch)"),
+        "update.notInApplications": ("Mise à jour automatique possible seulement quand Notchy est dans le dossier Applications.",
+                                     "Automatic updates only work when Notchy is in the Applications folder."),
+
+        // Glow
+        "glow.title": ("Contour lumineux", "Glowing outline"),
+        "glow.enabled": ("Contour lumineux pendant la lecture", "Glowing outline while playing"),
+        "glow.width": ("Épaisseur", "Thickness"),
+        "glow.blur": ("Diffusion", "Diffusion"),
+        "glow.intensity": ("Intensité", "Intensity"),
+        "glow.offset": ("Position (vers le bas)", "Position (downward)"),
+        "glow.pulse": ("Pulsation", "Pulse"),
+        "glow.pulseSpeed": ("Durée d'une pulsation", "Pulse duration"),
+        "glow.color": ("Couleur", "Color"),
+        "glow.color.artwork": ("Pochette", "Artwork"),
+        "glow.color.custom": ("Personnalisée", "Custom"),
+        "glow.color.pick": ("Couleur du contour", "Outline color"),
+        "glow.whenPaused": ("Garder le contour quand la musique est en pause", "Keep the outline while paused"),
+        "glow.hint": ("Le contour suit les côtés et le bas de l'encoche, de la couleur de ce qui joue.",
+                      "The outline follows the sides and bottom of the notch, in the color of what's playing."),
     ]
 }

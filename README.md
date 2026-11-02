@@ -40,6 +40,8 @@ Publier une version : mettre à jour `VERSION`, puis `scripts/release.sh "notes"
 
 Télécharger **la dernière version** : [Notchy (DMG)](https://github.com/ByteOneDev/Notchy/releases/latest). Ouvrir le DMG et glisser Notchy dans Applications.
 
+Ensuite, Notchy se met à jour tout seul (Réglages → À propos).
+
 L'app n'est pas notarisée par Apple. Après l'avoir copiée dans Applications :
 
 ```bash

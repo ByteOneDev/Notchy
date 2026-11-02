@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import ServiceManagement
+import SwiftUI
 
 enum AppLanguage: String, CaseIterable, Identifiable {
     case fr, en
@@ -50,6 +51,17 @@ final class AppSettings: ObservableObject {
     @Published var swipeToChangeTrack: Bool { didSet { save(swipeToChangeTrack, "swipeToChangeTrack") } }
     @Published var allAudioSources: Bool { didSet { save(allAudioSources, "allAudioSources") } }
     @Published var audioGlow: Bool { didSet { save(audioGlow, "audioGlow") } }
+    @Published var glowWidth: Double { didSet { save(glowWidth, "glowWidth") } }
+    @Published var glowBlur: Double { didSet { save(glowBlur, "glowBlur") } }
+    @Published var glowIntensity: Double { didSet { save(glowIntensity, "glowIntensity") } }
+    @Published var glowOffset: Double { didSet { save(glowOffset, "glowOffset") } }
+    @Published var glowPulse: Bool { didSet { save(glowPulse, "glowPulse") } }
+    @Published var glowPulseSpeed: Double { didSet { save(glowPulseSpeed, "glowPulseSpeed") } }
+    @Published var glowUsesArtworkColor: Bool { didSet { save(glowUsesArtworkColor, "glowUsesArtworkColor") } }
+    @Published var glowColorHex: String { didSet { save(glowColorHex, "glowColorHex") } }
+    @Published var glowWhenPaused: Bool { didSet { save(glowWhenPaused, "glowWhenPaused") } }
+    @Published var autoCheckUpdates: Bool { didSet { save(autoCheckUpdates, "autoCheckUpdates") } }
+    @Published var autoInstallUpdates: Bool { didSet { save(autoInstallUpdates, "autoInstallUpdates") } }
 
     // Live activities
     @Published var replaceVolumeHUD: Bool { didSet { save(replaceVolumeHUD, "replaceVolumeHUD") } }
@@ -142,6 +154,17 @@ final class AppSettings: ObservableObject {
         swipeToChangeTrack = value("swipeToChangeTrack", true)
         allAudioSources = value("allAudioSources", true)
         audioGlow = value("audioGlow", true)
+        glowWidth = value("glowWidth", Self.GlowDefaults.width)
+        glowBlur = value("glowBlur", Self.GlowDefaults.blur)
+        glowIntensity = value("glowIntensity", Self.GlowDefaults.intensity)
+        glowOffset = value("glowOffset", Self.GlowDefaults.offset)
+        glowPulse = value("glowPulse", true)
+        glowPulseSpeed = value("glowPulseSpeed", Self.GlowDefaults.pulseSpeed)
+        glowUsesArtworkColor = value("glowUsesArtworkColor", true)
+        glowColorHex = value("glowColorHex", "#A78BFA")
+        glowWhenPaused = value("glowWhenPaused", false)
+        autoCheckUpdates = value("autoCheckUpdates", true)
+        autoInstallUpdates = value("autoInstallUpdates", true)
         replaceVolumeHUD = value("replaceVolumeHUD", true)
         replaceBrightnessHUD = value("replaceBrightnessHUD", true)
         batteryActivity = value("batteryActivity", true)
@@ -219,5 +242,40 @@ final class AppSettings: ObservableObject {
                 NSLog("Notchy: launch at login failed: \(error)")
             }
         }
+    }
+}
+
+extension AppSettings {
+    enum GlowDefaults {
+        static let width: Double = 3
+        static let blur: Double = 12
+        static let intensity: Double = 1
+        static let offset: Double = 2.5
+        static let pulseSpeed: Double = 1.8
+    }
+
+    func resetGlow() {
+        glowWidth = GlowDefaults.width
+        glowBlur = GlowDefaults.blur
+        glowIntensity = GlowDefaults.intensity
+        glowOffset = GlowDefaults.offset
+        glowPulse = true
+        glowPulseSpeed = GlowDefaults.pulseSpeed
+        glowUsesArtworkColor = true
+        glowWhenPaused = false
+    }
+}
+
+extension Color {
+    /// "#RRGGBB".
+    init?(hex: String) {
+        let digits = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        guard digits.count == 6, let value = UInt32(digits, radix: 16) else { return nil }
+        self.init(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255, blue: Double(value & 0xFF) / 255)
+    }
+
+    var hex: String {
+        let color = NSColor(self).usingColorSpace(.sRGB) ?? .white
+        return String(format: "#%02X%02X%02X", Int(color.redComponent * 255), Int(color.greenComponent * 255), Int(color.blueComponent * 255))
     }
 }

@@ -58,7 +58,8 @@ struct NotchRootView: View {
 
     /// A thin outline in the artwork's color around the closed notch while sound plays.
     private var showsAudioGlow: Bool {
-        settings.audioGlow && !viewModel.isOpen && media.track?.isPlaying == true
+        guard settings.audioGlow, !viewModel.isOpen, let track = media.track else { return false }
+        return track.isPlaying || (settings.glowWhenPaused && media.showsInClosedNotch)
     }
 
     private var shape: NotchShape {
@@ -115,18 +116,31 @@ struct NotchRootView: View {
 /// Outline that breathes slowly in the color of what is playing.
 struct AudioGlow: View {
     let shape: NotchShape
+    /// Color of what is playing; replaced by the custom color when set in the settings.
     let color: Color
+    @ObservedObject private var settings = AppSettings.shared
+
+    private var glowColor: Color {
+        settings.glowUsesArtworkColor ? color : Color(hex: settings.glowColorHex) ?? color
+    }
 
     var body: some View {
-        NotchOutline(topRadius: shape.topRadius, bottomRadius: shape.bottomRadius, extendBottom: 2.5)
-            .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-            .shadow(color: color.opacity(0.95), radius: 4)
-            .shadow(color: color.opacity(0.65), radius: 12)
-            .phaseAnimator([0.55, 1.0]) { content, phase in
-                content.opacity(phase)
-            } animation: { _ in .easeInOut(duration: 1.8) }
+        let tint = glowColor.opacity(settings.glowIntensity)
+        let outline = NotchOutline(topRadius: shape.topRadius, bottomRadius: shape.bottomRadius, extendBottom: settings.glowOffset)
+            .stroke(tint, style: StrokeStyle(lineWidth: settings.glowWidth, lineCap: .round, lineJoin: .round))
+            // Diffusion: a tight halo plus a wide one.
+            .shadow(color: glowColor.opacity(0.95 * settings.glowIntensity), radius: settings.glowBlur / 3)
+            .shadow(color: glowColor.opacity(0.65 * settings.glowIntensity), radius: settings.glowBlur)
             .allowsHitTesting(false)
-            .animation(.easeInOut(duration: 0.6), value: color)
+            .animation(.easeInOut(duration: 0.6), value: glowColor)
+        if settings.glowPulse {
+            outline
+                .phaseAnimator([0.5, 1.0]) { content, phase in
+                    content.opacity(phase)
+                } animation: { _ in .easeInOut(duration: settings.glowPulseSpeed) }
+        } else {
+            outline
+        }
     }
 }
 

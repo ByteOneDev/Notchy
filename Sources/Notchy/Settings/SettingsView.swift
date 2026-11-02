@@ -195,6 +195,7 @@ private struct AppearancePane: View {
             .padding(.vertical, 6)
             Text(L("settings.style.hint")).font(.caption).foregroundStyle(.secondary)
         }
+        GlowSettingsSection()
         Section {
             Toggle(L("settings.size.adaptive"), isOn: $settings.adaptiveSize)
             LabeledContent(L("settings.size.width")) {
@@ -545,6 +546,7 @@ private struct PermissionsPane: View {
 
 private struct AboutPane: View {
     @ObservedObject private var updater = UpdateChecker.shared
+    @ObservedObject private var settings = AppSettings.shared
 
     var body: some View {
         Section {
@@ -557,16 +559,30 @@ private struct AboutPane: View {
             }
             .padding(.vertical, 4)
         }
-        Section {
+        Section(L("update.title")) {
             HStack {
-                Text(updater.statusText)
+                if updater.isInstalling { ProgressView().controlSize(.small) }
+                Text(updater.statusText.isEmpty ? L("about.version", UpdateChecker.currentVersion) : updater.statusText)
                 Spacer()
-                if let url = updater.availableURL {
+                if updater.availableVersion != nil, updater.canSelfUpdate {
+                    Button(L("update.installNow")) { updater.install(force: true) }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(updater.isInstalling)
+                } else if let url = updater.availableURL {
                     Button(L("about.download")) { NSWorkspace.shared.open(url) }
                 } else {
                     Button(L("menu.updates")) { updater.check(userInitiated: true) }
                 }
             }
+            Toggle(L("update.autoCheck"), isOn: $settings.autoCheckUpdates)
+            Toggle(L("update.autoInstall"), isOn: $settings.autoInstallUpdates)
+                .disabled(!settings.autoCheckUpdates)
+            if !updater.canSelfUpdate {
+                Label(L("update.notInApplications"), systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        }
+        Section {
             Link("GitHub — ByteOneDev/Notchy", destination: URL(string: "https://github.com/ByteOneDev/Notchy")!)
         }
     }

@@ -257,6 +257,16 @@ struct CompactLayout {
             } trailing: {
                 RingGauge(value: Double(percent) / 100, color: percent >= 95 ? .red : .orange, label: "\(percent)")
             }.withBottom(L("usage.warning", percent, window))
+        case let .update(version, state):
+            return CompactLayout(left: side, right: 62) {
+                Image(systemName: state == .installed ? "checkmark.seal.fill" : "arrow.down.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(state == .installed ? .green : .blue)
+                    .symbolEffect(.pulse, isActive: state == .installing)
+            } trailing: {
+                Text(version).font(.system(size: 11, weight: .semibold).monospacedDigit()).foregroundStyle(.white)
+            }.withBottom(state == .installed ? L("update.done", version)
+                         : state == .installing ? L("update.installing", version) : L("update.available", version))
         }
     }
 }

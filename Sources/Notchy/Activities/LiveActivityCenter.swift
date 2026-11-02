@@ -1,5 +1,9 @@
 import SwiftUI
 
+enum UpdateState: Equatable {
+    case available, installing, installed
+}
+
 enum LiveActivityKind: Equatable {
     case volume(level: Float, muted: Bool)
     case brightness(level: Float)
@@ -21,6 +25,7 @@ enum LiveActivityKind: Equatable {
     case agentDone(agent: String, project: String)
     case agentAttention(agent: String, message: String)
     case usageWarning(percent: Int, window: String)
+    case update(version: String, state: UpdateState)
 
     /// Activities of the same group replace each other instead of queueing (volume ticks…).
     var group: String {
@@ -40,6 +45,7 @@ enum LiveActivityKind: Equatable {
         case .rain: "rain"
         case .agentDone, .agentAttention: "agent"
         case .usageWarning: "usage"
+        case .update: "update"
         }
     }
 }

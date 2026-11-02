@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         FocusMonitor.shared.start()
         AgentHub.shared.start()
         HotKeyCenter.shared.start()
+        UpdateChecker.shared.start()
         NotchManager.shared.start()
 
         AppSettings.shared.$showMenuBarIcon
