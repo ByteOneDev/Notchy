@@ -36,7 +36,9 @@ L'app est signée avec le certificat local « Todoux Developer » s'il existe (s
 
 Publier une version : mettre à jour `VERSION`, puis `scripts/release.sh "notes"`.
 
-## Installer depuis une release
+## Installer
+
+Télécharger **la dernière version** : [Notchy (DMG)](https://github.com/ByteOneDev/Notchy/releases/latest). Ouvrir le DMG et glisser Notchy dans Applications.
 
 L'app n'est pas notarisée par Apple. Après l'avoir copiée dans Applications :
 
