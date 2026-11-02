@@ -192,7 +192,8 @@ private struct AppearancePane: View {
             .padding(.vertical, 6)
             Text(L("settings.style.hint")).font(.caption).foregroundStyle(.secondary)
         }
-        Section(L("settings.size")) {
+        Section {
+            Toggle(L("settings.size.adaptive"), isOn: $settings.adaptiveSize)
             LabeledContent(L("settings.size.width")) {
                 Slider(value: $settings.openWidth, in: 640...1200, step: 10) { EmptyView() }.frame(width: 200)
                 Text("\(Int(settings.openWidth)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 60, alignment: .trailing)
@@ -209,6 +210,10 @@ private struct AppearancePane: View {
                 }
                 Button(L("settings.size.preview")) { NotchManager.shared.openPrimary() }
             }
+        } header: {
+            Text(L("settings.size"))
+        } footer: {
+            Text(L("settings.size.hint")).font(.caption).foregroundStyle(.secondary)
         }
         Section(L("settings.privacy")) {
             Toggle(L("settings.hideFromCapture"), isOn: $settings.hideFromScreenCapture)

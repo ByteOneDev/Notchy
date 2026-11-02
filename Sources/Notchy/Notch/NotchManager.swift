@@ -21,7 +21,7 @@ final class NotchManager {
             .sink { [weak self] _ in DispatchQueue.main.async { self?.rebuild() } }
             .store(in: &cancellables)
         // The window is sized after the open notch: resize it once the sliders settle.
-        AppSettings.shared.$openWidth.combineLatest(AppSettings.shared.$openHeight)
+        AppSettings.shared.$openWidth.combineLatest(AppSettings.shared.$openHeight, AppSettings.shared.$adaptiveSize)
             .dropFirst()
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
             .sink { [weak self] _ in self?.resizeWindows() }

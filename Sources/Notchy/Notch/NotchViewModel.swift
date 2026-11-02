@@ -19,6 +19,20 @@ enum NotchTab: String, CaseIterable, Identifiable {
     }
 
     var title: String { L("tab.\(rawValue)") }
+
+    /// Each panel's own size (content below the notch row), at the default scale.
+    var baseSize: CGSize {
+        switch self {
+        case .home: CGSize(width: 860, height: 170)
+        case .music: CGSize(width: 620, height: 168)
+        case .calendar: CGSize(width: 740, height: 210)
+        case .shelf: CGSize(width: 700, height: 148)
+        case .teleprompter: CGSize(width: 660, height: 220)
+        case .agents: CGSize(width: 780, height: 196)
+        case .timer: CGSize(width: 660, height: 156)
+        case .mirror: CGSize(width: 600, height: 210)
+        }
+    }
 }
 
 extension NSScreen {
@@ -59,12 +73,22 @@ final class NotchViewModel: ObservableObject {
     let notchSize: CGSize
     let hasHardwareNotch: Bool
 
-    /// The window: big enough for the open notch plus its shadow.
+    /// The window: big enough for the largest panel plus the panel bar and the shadow.
     static var canvasSize: CGSize {
-        CGSize(width: openWidth + 140, height: openContentHeight + 140)
+        let sizes = NotchTab.allCases.map(panelSize(for:))
+        return CGSize(width: (sizes.map(\.width).max() ?? 860) + 140,
+                      height: (sizes.map(\.height).max() ?? 170) + 140)
     }
-    static var openWidth: CGFloat { AppSettings.shared.openWidth }
-    static var openContentHeight: CGFloat { AppSettings.shared.openHeight }
+
+    /// Size of a panel below the notch row: its own size when adaptive, else the Nook's,
+    /// scaled by the width and height set in the settings.
+    static func panelSize(for tab: NotchTab) -> CGSize {
+        let settings = AppSettings.shared
+        let base = settings.adaptiveSize ? tab.baseSize : NotchTab.home.baseSize
+        let widthScale = settings.openWidth / AppSettings.defaultOpenWidth
+        let heightScale = settings.openHeight / AppSettings.defaultOpenHeight
+        return CGSize(width: (base.width * widthScale).rounded(), height: (base.height * heightScale).rounded())
+    }
 
     init(screen: NSScreen) {
         displayID = screen.displayID
@@ -76,7 +100,9 @@ final class NotchViewModel: ObservableObject {
     var isOpen: Bool { state == .open }
 
     var openSize: CGSize {
-        CGSize(width: Self.openWidth, height: notchSize.height + Self.openContentHeight)
+        let panel = Self.panelSize(for: tab)
+        // Never narrower than the notch plus the header on each side of it.
+        return CGSize(width: max(panel.width, notchSize.width + 380), height: notchSize.height + panel.height)
     }
 
     func open(tab: NotchTab? = nil) {

@@ -93,6 +93,7 @@ final class AppSettings: ObservableObject {
     // Notch size, sounds, privacy
     @Published var openWidth: Double { didSet { save(openWidth, "openWidth") } }
     @Published var openHeight: Double { didSet { save(openHeight, "openHeight") } }
+    @Published var adaptiveSize: Bool { didSet { save(adaptiveSize, "adaptiveSize") } }
     @Published var hideFromScreenCapture: Bool { didSet { save(hideFromScreenCapture, "hideFromScreenCapture") } }
     @Published var sounds: Bool { didSet { save(sounds, "sounds") } }
     @Published var soundVolume: Double { didSet { save(soundVolume, "soundVolume") } }
@@ -169,6 +170,7 @@ final class AppSettings: ObservableObject {
         usageAlertThreshold = value("usageAlertThreshold", 80)
         openWidth = value("openWidth", Self.defaultOpenWidth)
         openHeight = value("openHeight", Self.defaultOpenHeight)
+        adaptiveSize = value("adaptiveSize", true)
         hideFromScreenCapture = value("hideFromScreenCapture", true)
         sounds = value("sounds", true)
         soundVolume = value("soundVolume", 0.3)
