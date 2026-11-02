@@ -11,6 +11,7 @@ struct OpenNotchView: View {
             switch tab {
             case .shelf: settings.shelfEnabled
             case .mirror: settings.mirrorEnabled
+            case .teleprompter: settings.teleprompterEnabled
             default: true
             }
         }
@@ -69,6 +70,7 @@ struct OpenNotchView: View {
         case .home: HomeView()
         case .shelf: ShelfView()
         case .timer: TimerTabView()
+        case .teleprompter: TeleprompterView()
         case .mirror: MirrorView()
         }
     }
@@ -125,7 +127,7 @@ struct HomeView: View {
         HStack(spacing: 18) {
             if settings.mediaEnabled {
                 MediaPlayerView()
-                    .frame(width: settings.calendarEnabled ? 320 : nil)
+                    .frame(width: settings.calendarEnabled ? 380 : nil)
                     .frame(maxWidth: settings.calendarEnabled ? nil : .infinity)
             }
             if settings.mediaEnabled && settings.calendarEnabled {

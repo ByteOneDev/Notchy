@@ -310,6 +310,7 @@ private struct WidgetsPane: View {
         Section(L("settings.widgets.other")) {
             Toggle(L("settings.widgets.shelf"), isOn: $settings.shelfEnabled)
             Toggle(L("settings.widgets.mirror"), isOn: $settings.mirrorEnabled)
+            Toggle(L("settings.widgets.teleprompter"), isOn: $settings.teleprompterEnabled)
         }
     }
 

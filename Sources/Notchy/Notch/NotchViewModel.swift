@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 enum NotchTab: String, CaseIterable, Identifiable {
-    case home, shelf, timer, mirror
+    case home, shelf, timer, teleprompter, mirror
     var id: String { rawValue }
 
     var icon: String {
@@ -10,6 +10,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .home: "house.fill"
         case .shelf: "tray.full.fill"
         case .timer: "timer"
+        case .teleprompter: "text.aligncenter"
         case .mirror: "person.crop.square.fill"
         }
     }
@@ -53,9 +54,9 @@ final class NotchViewModel: ObservableObject {
     let notchSize: CGSize
     let hasHardwareNotch: Bool
 
-    static let canvasSize = CGSize(width: 780, height: 320)
-    static let openWidth: CGFloat = 660
-    static let openContentHeight: CGFloat = 178
+    static let canvasSize = CGSize(width: 1000, height: 300)
+    static let openWidth: CGFloat = 860
+    static let openContentHeight: CGFloat = 156
 
     init(screen: NSScreen) {
         displayID = screen.displayID
@@ -101,8 +102,25 @@ final class NotchViewModel: ObservableObject {
         }
         guard event.momentumPhase.isEmpty, !gestureConsumed else { return }
         let natural = event.isDirectionInvertedFromDevice
+        // Deltas in the direction the fingers move.
         scrollX += event.scrollingDeltaX * (natural ? 1 : -1)
         scrollY += event.scrollingDeltaY * (natural ? 1 : -1)
+
+        // In the teleprompter, vertical scrolling moves the text instead of closing the notch.
+        if isOpen, tab == .teleprompter, !Teleprompter.shared.isEditing, abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX) {
+            Teleprompter.shared.nudge(by: -event.scrollingDeltaY * (natural ? 1 : -1))
+            scrollX = 0; scrollY = 0
+            return
+        }
+
+        // Over the calendar, a horizontal swipe walks through the days, one day every 45 pt.
+        if isOpen, tab == .home, CalendarService.shared.isHovered, abs(scrollX) > 45, abs(scrollX) > abs(scrollY) {
+            Haptics.tap()
+            // Fingers moving left = next day, like turning pages.
+            CalendarService.shared.moveSelection(by: scrollX < 0 ? 1 : -1)
+            scrollX = 0
+            return
+        }
 
         if abs(scrollX) > 60, abs(scrollX) > abs(scrollY) * 1.5 {
             gestureConsumed = true
@@ -110,11 +128,16 @@ final class NotchViewModel: ObservableObject {
             Haptics.tap()
             // Fingers moving right = previous track, left = next, like swiping cards.
             scrollX > 0 ? NowPlayingService.shared.previous() : NowPlayingService.shared.next()
-        } else if abs(scrollY) > 40, abs(scrollY) > abs(scrollX) {
+        } else if abs(scrollY) > 30, abs(scrollY) > abs(scrollX) {
             gestureConsumed = true
-            // Fingers moving down pulls the notch open, up pushes it closed.
-            if scrollY > 0, !isOpen { open() } else if scrollY < 0, isOpen { close() }
+            // Closed: a two-finger swipe either way opens. Open: swiping up closes.
+            if !isOpen { open() } else if scrollY < 0, !isPinned { close() }
         }
+    }
+
+    /// The notch stays open while the teleprompter is being read or edited.
+    var isPinned: Bool {
+        tab == .teleprompter && (Teleprompter.shared.isRunning || Teleprompter.shared.isEditing)
     }
 }
 

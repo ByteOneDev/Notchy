@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// Week strip on top, the selected day's agenda below.
+/// Week strip on top, the selected day's agenda below. Swipe with two fingers to change day.
 struct CalendarWidget: View {
     @ObservedObject private var service = CalendarService.shared
     @ObservedObject private var settings = AppSettings.shared
-    @State private var selected = Calendar.current.startOfDay(for: .now)
 
     private var calendar: Calendar {
         var calendar = Calendar.current
@@ -12,25 +11,28 @@ struct CalendarWidget: View {
         return calendar
     }
 
+    private var selected: Date { service.selectedDay }
+
+    /// A sliding window of days that keeps the selected day in the same slot.
     private var days: [Date] {
-        let today = calendar.startOfDay(for: .now)
-        return (-2...11).compactMap { calendar.date(byAdding: .day, value: $0, to: today) }
+        (-3...7).compactMap { calendar.date(byAdding: .day, value: $0, to: selected) }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(selected.formatted(.dateTime.month(.wide).locale(settings.language.locale)).capitalized)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(selected.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(settings.language.locale)).capitalized)
                     .font(.system(size: 14, weight: .semibold))
-                Text(selected.formatted(.dateTime.year().locale(settings.language.locale)))
-                    .font(.system(size: 14))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .contentTransition(.numericText())
                 Spacer()
                 if !calendar.isDateInToday(selected) {
-                    Button(L("calendar.today")) { withAnimation(.snappy) { selected = calendar.startOfDay(for: .now) } }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.red)
+                    Button(L("calendar.today")) {
+                        withAnimation(.snappy) { service.selectedDay = calendar.startOfDay(for: .now) }
+                        service.reload()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.red)
                 }
             }
             dayStrip
@@ -42,25 +44,25 @@ struct CalendarWidget: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .contentShape(Rectangle())
+        .onHover { service.isHovered = $0 }
     }
 
     private var dayStrip: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 2) {
-                    ForEach(days, id: \.self) { day in
-                        DayCell(day: day, calendar: calendar, selected: calendar.isDate(day, inSameDayAs: selected),
-                                hasEvents: !service.events(on: day).isEmpty)
-                            .id(day)
-                            .onTapGesture { withAnimation(.snappy(duration: 0.25)) { selected = day } }
-                    }
-                }
+        HStack(spacing: 4) {
+            ForEach(days, id: \.self) { day in
+                DayCell(day: day, calendar: calendar, selected: calendar.isDate(day, inSameDayAs: selected),
+                        hasEvents: !service.events(on: day).isEmpty)
+                    .onTapGesture { withAnimation(.snappy(duration: 0.25)) { service.selectedDay = day } }
+                    .transition(.opacity)
             }
-            .onAppear { proxy.scrollTo(days[2], anchor: .leading) }
-            .onChange(of: selected) { _, day in withAnimation { proxy.scrollTo(day, anchor: .center) } }
         }
-        .frame(height: 44)
-        .mask(LinearGradient(stops: [.init(color: .black, location: 0.85), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
+        .frame(height: 42)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .clipped()
+        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.08),
+                                     .init(color: .black, location: 0.85), .init(color: .clear, location: 1)],
+                             startPoint: .leading, endPoint: .trailing))
     }
 
     @ViewBuilder private var agenda: some View {
@@ -73,11 +75,19 @@ struct CalendarWidget: View {
             .font(.system(size: 12))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(events) { EventRow(event: $0, locale: settings.language.locale) }
+            // No scroll view: it would swallow the two-finger swipes that change the day.
+            let shown = Array(events.prefix(2))
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(shown) { EventRow(event: $0, locale: settings.language.locale) }
+                if events.count > shown.count {
+                    Text(L("calendar.more", events.count - shown.count))
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.45))
+                        .padding(.leading, 11)
                 }
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 }
@@ -100,7 +110,7 @@ private struct DayCell: View {
             Circle().fill(hasEvents ? (selected ? Color.black.opacity(0.5) : Color.white.opacity(0.5)) : .clear)
                 .frame(width: 3, height: 3)
         }
-        .frame(width: 30, height: 42)
+        .frame(width: 32, height: 40)
         .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(selected ? Color.white : Color.clear))
         .contentShape(Rectangle())
     }

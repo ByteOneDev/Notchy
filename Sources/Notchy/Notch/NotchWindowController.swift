@@ -167,7 +167,7 @@ final class NotchWindowController {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.closeWork = nil
-                guard !self.viewModel.hovering, !self.viewModel.dropTargeted else { return }
+                guard !self.viewModel.hovering, !self.viewModel.dropTargeted, !self.viewModel.isPinned else { return }
                 self.viewModel.close()
             }
         }

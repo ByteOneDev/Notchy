@@ -37,6 +37,15 @@ enum Strings {
         "calendar.empty": ("Aucun événement", "No events"),
         "calendar.join": ("Rejoindre", "Join"),
         "calendar.allDay": ("Toute la journée", "All day"),
+        "calendar.more": ("+ %d autres", "+ %d more"),
+
+        // Teleprompter
+        "teleprompter.placeholder": ("Colle ou écris ton texte ici…", "Paste or type your script here…"),
+        "teleprompter.empty": ("Écrire un texte", "Write a script"),
+        "teleprompter.edit": ("Modifier le texte", "Edit script"),
+        "teleprompter.done": ("Terminé", "Done"),
+        "teleprompter.restart": ("Revenir au début", "Back to start"),
+        "teleprompter.remaining": ("Reste %@", "%@ left"),
 
         // Weather
         "weather.clear": ("Ciel dégagé", "Clear"),
@@ -86,7 +95,7 @@ enum Strings {
         "settings.launchAtLogin": ("Ouvrir au démarrage", "Launch at login"),
         "settings.menuBarIcon": ("Icône dans la barre des menus", "Show menu bar icon"),
         "settings.behavior": ("Comportement", "Behavior"),
-        "settings.openOnHover": ("Ouvrir au survol", "Open on hover"),
+        "settings.openOnHover": ("Ouvrir au survol (sinon : glisser à deux doigts ou cliquer)", "Open on hover (otherwise: two-finger swipe or click)"),
         "settings.hoverDelay": ("Délai de survol", "Hover delay"),
         "settings.haptics": ("Retour haptique", "Haptic feedback"),
         "settings.swipe": ("Glisser sur le notch pour changer de morceau", "Swipe on the notch to change track"),
@@ -144,6 +153,7 @@ enum Strings {
         "settings.widgets.other": ("Autres", "Other"),
         "settings.widgets.shelf": ("Étagère, AirDrop et conversion", "Shelf, AirDrop and conversion"),
         "settings.widgets.mirror": ("Miroir", "Mirror"),
+        "settings.widgets.teleprompter": ("Téléprompteur", "Teleprompter"),
 
         // Permissions
         "perm.accessibility": ("Accessibilité", "Accessibility"),

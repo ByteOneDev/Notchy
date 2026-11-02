@@ -1,5 +1,6 @@
 import AppKit
 import EventKit
+import SwiftUI
 
 @MainActor
 final class CalendarService: ObservableObject {
@@ -17,6 +18,9 @@ final class CalendarService: ObservableObject {
 
     @Published private(set) var authorized = false
     @Published private(set) var events: [Event] = []
+    @Published var selectedDay = Calendar.current.startOfDay(for: .now)
+    /// The mouse is over the calendar widget: horizontal swipes change the day.
+    var isHovered = false
     private let store = EKEventStore()
     private var announced = Set<String>()
     private var timer: Timer?
@@ -43,12 +47,22 @@ final class CalendarService: ObservableObject {
         }
     }
 
-    /// Loads two weeks of events around today.
+    func moveSelection(by days: Int) {
+        guard let day = Calendar.current.date(byAdding: .day, value: days, to: selectedDay) else { return }
+        withAnimation(.snappy(duration: 0.25)) { selectedDay = day }
+        // Swiping far from the loaded range: load events around the new day.
+        if abs(day.timeIntervalSince(loadedCenter)) > 10 * 86_400 { reload() }
+    }
+
+    private var loadedCenter = Calendar.current.startOfDay(for: .now)
+
+    /// Loads a month of events around the selected day.
     func reload() {
         guard authorized else { events = []; return }
         let calendar = Calendar.current
-        let start = calendar.date(byAdding: .day, value: -3, to: calendar.startOfDay(for: .now))!
-        let end = calendar.date(byAdding: .day, value: 21, to: start)!
+        loadedCenter = selectedDay
+        let start = calendar.date(byAdding: .day, value: -15, to: selectedDay)!
+        let end = calendar.date(byAdding: .day, value: 31, to: start)!
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
         events = store.events(matching: predicate)
             .filter { $0.status != .canceled }

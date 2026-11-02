@@ -9,7 +9,8 @@ Une app de notch native pour macOS (Swift + SwiftUI), dans l'esprit d'Alcove et 
 - **Live activities** : charge et batterie faible, écouteurs et appareils Bluetooth (batterie des AirPods), verrouillage majuscules, caméra et micro utilisés, conversion de fichiers.
 - **HUD volume et luminosité** qui remplacent ceux de macOS.
 - **Écran verrouillé** : le notch reste visible avec la musique.
-- **Gestes** : survol pour ouvrir, glisser vers le bas ou le haut pour ouvrir ou fermer, glisser à gauche ou à droite pour changer de morceau, retour haptique.
+- **Gestes** : glisser à deux doigts (haut ou bas) sur le notch pour l'ouvrir, vers le haut pour le fermer, à gauche ou à droite pour changer de morceau ou de jour dans le calendrier, retour haptique. L'ouverture au survol reste disponible en option.
+- **Téléprompteur** : le texte défile juste sous la caméra, vitesse et taille réglables, compte à rebours, défilement manuel à deux doigts.
 - **Pomodoro** et **minuteur**, **météo** (Open-Meteo), **miroir** (caméra).
 - **Étagère** : glisse des fichiers sur le notch, **AirDrop** et **conversion** (images PNG/JPEG/HEIC/TIFF, vidéo MP4/MOV, audio M4A).
 - 3 styles : noir, semi-transparent, transparent (Liquid Glass sur macOS 26+).

@@ -37,7 +37,7 @@ struct CompactLayout {
     @MainActor
     static func make(activity: LiveActivity?, media: NowPlayingService, locked: Bool, justUnlocked: Bool,
                      pomodoro: PomodoroTimer, timer: QuickTimer, notchHeight: CGFloat) -> CompactLayout {
-        let side = max(notchHeight + 2, 32)
+        let side = max(notchHeight + 8, 42)
         if let activity { return forActivity(activity.kind, side: side) }
 
         if locked || justUnlocked {

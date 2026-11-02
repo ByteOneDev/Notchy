@@ -13,7 +13,7 @@ final class NowPlayingService: ObservableObject {
     /// Last time something played; the closed notch keeps showing a paused track for a while.
     @Published private(set) var lastPlayingDate: Date = .distantPast
 
-    private let mediaRemote = MediaRemoteSource()
+    private let mediaRemote = MediaAdapterSource()
     private let scriptable = [ScriptableAppSource(app: ScriptableAppSource.spotify), ScriptableAppSource(app: ScriptableAppSource.music)]
     private var candidates: [ObjectIdentifier: NowPlayingTrack] = [:]
     private var artworks: [ObjectIdentifier: NSImage] = [:]

@@ -31,6 +31,13 @@ cp "$BIN_DIR/Notchy" "$APP/Contents/MacOS/Notchy"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp -R Resources/en.lproj Resources/fr.lproj "$APP/Contents/Resources/"
 [[ -f Resources/AppIcon.icns ]] && cp Resources/AppIcon.icns "$APP/Contents/Resources/"
+
+# Media adapter: loaded by /usr/bin/perl to reach MediaRemote (see MediaAdapter/NotchyMediaAdapter.m).
+mkdir -p "$APP/Contents/Resources/MediaAdapter"
+clang -fobjc-arc -O2 -dynamiclib -arch arm64 -mmacosx-version-min=15.0 -framework Foundation \
+  -o "$APP/Contents/Resources/MediaAdapter/NotchyMediaAdapter.dylib" MediaAdapter/NotchyMediaAdapter.m
+cp MediaAdapter/run.pl "$APP/Contents/Resources/MediaAdapter/run.pl"
+codesign --force --sign "$IDENTITY" "$APP/Contents/Resources/MediaAdapter/NotchyMediaAdapter.dylib"
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$BUILD_NUMBER" "$APP/Contents/Info.plist"
 

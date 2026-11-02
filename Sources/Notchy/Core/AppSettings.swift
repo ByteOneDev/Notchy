@@ -72,6 +72,7 @@ final class AppSettings: ObservableObject {
     @Published var pomodoroRounds: Int { didSet { save(pomodoroRounds, "pomodoroRounds") } }
     @Published var mirrorEnabled: Bool { didSet { save(mirrorEnabled, "mirrorEnabled") } }
     @Published var shelfEnabled: Bool { didSet { save(shelfEnabled, "shelfEnabled") } }
+    @Published var teleprompterEnabled: Bool { didSet { save(teleprompterEnabled, "teleprompterEnabled") } }
 
     static let defaultAllowedApps = [
         "com.spotify.client", "com.apple.Music", "com.apple.podcasts", "com.deezer.deezer-desktop",
@@ -91,7 +92,7 @@ final class AppSettings: ObservableObject {
         language = AppLanguage(rawValue: value("language", "fr")) ?? .fr
         appearance = NotchAppearance(rawValue: value("appearance", "black")) ?? .black
         displayTarget = DisplayTarget(rawValue: value("displayTarget", "builtIn")) ?? .builtIn
-        openOnHover = value("openOnHover", true)
+        openOnHover = value("openOnHover", false)
         hoverDelay = value("hoverDelay", 0.12)
         haptics = value("haptics", true)
         hideInFullscreen = value("hideInFullscreen", true)
@@ -123,6 +124,7 @@ final class AppSettings: ObservableObject {
         pomodoroRounds = value("pomodoroRounds", 4)
         mirrorEnabled = value("mirrorEnabled", true)
         shelfEnabled = value("shelfEnabled", true)
+        teleprompterEnabled = value("teleprompterEnabled", true)
         Loc.language = language
     }
 
