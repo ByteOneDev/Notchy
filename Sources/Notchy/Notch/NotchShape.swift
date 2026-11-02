@@ -5,6 +5,9 @@ import SwiftUI
 struct NotchOutline: Shape {
     var topRadius: CGFloat
     var bottomRadius: CGFloat
+    /// How far below the drawn notch the line runs: the hardware notch goes a little lower
+    /// than the safe area macOS reports.
+    var extendBottom: CGFloat = 0
 
     var animatableData: AnimatablePair<CGFloat, CGFloat> {
         get { AnimatablePair(topRadius, bottomRadius) }
@@ -12,6 +15,7 @@ struct NotchOutline: Shape {
     }
 
     func path(in rect: CGRect) -> Path {
+        let rect = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height + extendBottom)
         let t = min(topRadius, rect.width / 4)
         let b = min(bottomRadius, (rect.width - 2 * t) / 2, rect.height - t)
         var p = Path()

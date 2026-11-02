@@ -118,7 +118,7 @@ struct AudioGlow: View {
     let color: Color
 
     var body: some View {
-        NotchOutline(topRadius: shape.topRadius, bottomRadius: shape.bottomRadius)
+        NotchOutline(topRadius: shape.topRadius, bottomRadius: shape.bottomRadius, extendBottom: 2.5)
             .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
             .shadow(color: color.opacity(0.95), radius: 4)
             .shadow(color: color.opacity(0.65), radius: 12)
