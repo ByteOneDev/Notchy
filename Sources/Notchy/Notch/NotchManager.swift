@@ -48,7 +48,23 @@ final class NotchManager {
         return controllers.values.first?.viewModel
     }
 
+    /// A full-screen app hides the notch under the mouse: it must not open, and the system
+    /// HUDs take over for volume and brightness.
+    var isFullscreenActive: Bool {
+        guard let controller = primaryController else { return false }
+        return controller.viewModel.hiddenForFullscreen || !controller.panel.isOnActiveSpace
+    }
+
+    private var primaryController: NotchWindowController? {
+        let mouse = NSEvent.mouseLocation
+        if let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }), let controller = controllers[screen.displayID] {
+            return controller
+        }
+        return controllers.values.first
+    }
+
     func openPrimary(tab: NotchTab? = nil) {
+        guard !isFullscreenActive else { return }
         primaryViewModel?.open(tab: tab)
     }
 
@@ -69,7 +85,7 @@ final class NotchManager {
         controllers.values.forEach { $0.updateFrame() }
     }
 
-    private func rebuild() {
+    func rebuild() {
         controllers.values.forEach { $0.invalidate() }
         controllers.removeAll()
         for screen in targetScreens() {

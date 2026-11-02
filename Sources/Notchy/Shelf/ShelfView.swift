@@ -3,15 +3,20 @@ import UniformTypeIdentifiers
 
 struct ShelfView: View {
     @ObservedObject private var store = ShelfStore.shared
+    @ObservedObject private var settings = AppSettings.shared
     @State private var shelfTargeted = false
 
     var body: some View {
         HStack(spacing: 12) {
             shelf
-            DropTile(icon: "dot.radiowaves.up.forward", title: L("shelf.airdrop"), color: .blue) { urls in
-                store.airDrop(urls)
+            if settings.airDropEnabled {
+                DropTile(icon: "dot.radiowaves.up.forward", title: L("shelf.airdrop"), color: .blue) { urls in
+                    store.airDrop(urls)
+                }
             }
-            ConvertTile()
+            if settings.conversionEnabled {
+                ConvertTile()
+            }
         }
     }
 
@@ -71,8 +76,10 @@ private struct ShelfItemView: View {
         .contextMenu {
             Button(L("shelf.open")) { NSWorkspace.shared.open(item.url) }
             Button(L("shelf.reveal")) { NSWorkspace.shared.activateFileViewerSelecting([item.url]) }
-            Button(L("shelf.airdrop")) { ShelfStore.shared.airDrop([item.url]) }
-            let formats = FileConverter.formats(for: [item.url])
+            if AppSettings.shared.airDropEnabled {
+                Button(L("shelf.airdrop")) { ShelfStore.shared.airDrop([item.url]) }
+            }
+            let formats = AppSettings.shared.conversionEnabled ? FileConverter.formats(for: [item.url]) : []
             if !formats.isEmpty {
                 Menu(L("shelf.convert")) {
                     ForEach(formats) { format in

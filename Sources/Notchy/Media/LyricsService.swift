@@ -39,6 +39,12 @@ final class LyricsService: ObservableObject {
         }
     }
 
+    func clear() {
+        task?.cancel()
+        loadedIdentity = ""
+        lines = []
+    }
+
     func line(at position: TimeInterval) -> String? {
         guard !lines.isEmpty else { return nil }
         let index = lines.lastIndex { $0.time <= position + 0.3 }

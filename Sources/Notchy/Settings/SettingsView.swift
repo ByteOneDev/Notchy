@@ -5,12 +5,13 @@ import Speech
 import SwiftUI
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, appearance, media, activities, widgets, agents, permissions, about
+    case general, features, appearance, media, activities, widgets, agents, permissions, about
     var id: String { rawValue }
 
     var icon: String {
         switch self {
         case .general: "gearshape.fill"
+        case .features: "switch.2"
         case .appearance: "paintbrush.fill"
         case .media: "music.note"
         case .activities: "bolt.horizontal.fill"
@@ -24,6 +25,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     var color: Color {
         switch self {
         case .general: .gray
+        case .features: .teal
         case .appearance: .purple
         case .media: .pink
         case .activities: .orange
@@ -107,6 +109,7 @@ struct SettingsView: View {
             Form {
                 switch selection.pane {
                 case .general: GeneralPane()
+                case .features: FeaturesPane()
                 case .appearance: AppearancePane()
                 case .media: MediaPane()
                 case .activities: ActivitiesPane()

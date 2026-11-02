@@ -11,7 +11,7 @@ struct MusicPanel: View {
         if let track = media.track {
             HStack(spacing: 20) {
                 ZStack(alignment: .bottomTrailing) {
-                    ArtworkView(image: media.artwork, size: 116, radius: 20)
+                    ArtworkView(image: media.artwork, size: 116, radius: 20, isLogo: media.isLogoArtwork, tint: media.accent)
                         .shadow(color: media.accent.opacity(track.isPlaying ? 0.6 : 0.2), radius: 18)
                         .scaleEffect(track.isPlaying ? 1 : 0.93)
                         .animation(.spring(response: 0.4, dampingFraction: 0.6), value: track.isPlaying)

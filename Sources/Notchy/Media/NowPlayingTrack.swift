@@ -13,6 +13,8 @@ struct NowPlayingTrack: Equatable {
     var bundleID: String?
     /// Web site playing the media when the source is a browser.
     var domain: String?
+    /// Source outside the allowed lists: only its name and logo are shown, not what it plays.
+    var logoOnly = false
 
     var identity: String { "\(bundleID ?? "")|\(title)|\(artist)" }
 

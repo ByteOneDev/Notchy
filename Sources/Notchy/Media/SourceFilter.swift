@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// Decides which media may appear in the notch: listed audio apps, and in browsers only
 /// listed sites (YouTube, Spotify web…). Anything else, like niche video sites, is ignored.
@@ -16,19 +16,40 @@ enum SourceFilter {
     }
 
     private static var domainCache: [String: String?] = [:]
+    /// Lookups that found no tab, retried after a while instead of on every update.
+    private static var missCache: [String: Date] = [:]
 
-    /// Returns the track with its web site filled in, or nil when it must not be shown.
+    /// Returns the track as it should be shown, or nil when it must not be shown.
+    /// Listed apps and sites show everything; any other source, when "all audio sources" is on,
+    /// shows only its name and logo (e.g. "archive.org" with the site's icon).
     static func filter(_ track: NowPlayingTrack) async -> NowPlayingTrack? {
         let settings = AppSettings.shared
         guard let bundleID = track.bundleID else { return track }
-        guard settings.allowedApps.contains(bundleID) else { return nil }
-        guard isBrowser(bundleID) else { return track }
+        let listedApp = settings.allowedApps.contains(bundleID)
 
-        let domain = await domain(for: track, browser: bundleID)
-        guard let domain, isAllowed(domain: domain) else { return nil }
-        var filtered = track
-        filtered.domain = domain
-        return filtered
+        if isBrowser(bundleID) {
+            let domain = await domain(for: track, browser: bundleID)
+            var result = track
+            result.domain = domain
+            if listedApp, let domain, isAllowed(domain: domain) { return result }
+            return settings.allAudioSources ? logoOnly(result, name: domain ?? appName(bundleID)) : nil
+        }
+        if listedApp { return track }
+        return settings.allAudioSources ? logoOnly(track, name: appName(bundleID)) : nil
+    }
+
+    private static func logoOnly(_ track: NowPlayingTrack, name: String) -> NowPlayingTrack {
+        var result = track
+        result.logoOnly = true
+        result.title = name
+        result.artist = track.domain != nil ? appName(track.bundleID ?? "") : ""
+        result.album = ""
+        return result
+    }
+
+    static func appName(_ bundleID: String) -> String {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return bundleID }
+        return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
     }
 
     static func isAllowed(domain: String) -> Bool {
@@ -41,6 +62,7 @@ enum SourceFilter {
     private static func domain(for track: NowPlayingTrack, browser: String) async -> String? {
         let key = "\(browser)|\(track.title)"
         if let cached = domainCache[key] { return cached }
+        if let miss = missCache[key], Date.now.timeIntervalSince(miss) < 20 { return nil }
         guard !unscriptableBrowsers.contains(browser), Script.isRunning(browser) else { return nil }
 
         let titleProperty = browser == safari ? "name" : "title"
@@ -68,7 +90,7 @@ enum SourceFilter {
             }
         }
         // A cached nil remembers "no allowed tab" too; but retry later, the tab title may lag.
-        if found != nil { domainCache[key] = .some(found) }
+        if found != nil { domainCache[key] = .some(found) } else { missCache[key] = .now }
         if domainCache.count > 200 { domainCache.removeAll() }
         return found
     }

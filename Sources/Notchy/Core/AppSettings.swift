@@ -48,6 +48,8 @@ final class AppSettings: ObservableObject {
     @Published var showVisualizer: Bool { didSet { save(showVisualizer, "showVisualizer") } }
     @Published var showLyrics: Bool { didSet { save(showLyrics, "showLyrics") } }
     @Published var swipeToChangeTrack: Bool { didSet { save(swipeToChangeTrack, "swipeToChangeTrack") } }
+    @Published var allAudioSources: Bool { didSet { save(allAudioSources, "allAudioSources") } }
+    @Published var audioGlow: Bool { didSet { save(audioGlow, "audioGlow") } }
 
     // Live activities
     @Published var replaceVolumeHUD: Bool { didSet { save(replaceVolumeHUD, "replaceVolumeHUD") } }
@@ -73,6 +75,9 @@ final class AppSettings: ObservableObject {
     @Published var mirrorEnabled: Bool { didSet { save(mirrorEnabled, "mirrorEnabled") } }
     @Published var shelfEnabled: Bool { didSet { save(shelfEnabled, "shelfEnabled") } }
     @Published var teleprompterEnabled: Bool { didSet { save(teleprompterEnabled, "teleprompterEnabled") } }
+    @Published var timerEnabled: Bool { didSet { save(timerEnabled, "timerEnabled") } }
+    @Published var airDropEnabled: Bool { didSet { save(airDropEnabled, "airDropEnabled") } }
+    @Published var conversionEnabled: Bool { didSet { save(conversionEnabled, "conversionEnabled") } }
     @Published var teleprompterFollowsVoice: Bool { didSet { save(teleprompterFollowsVoice, "teleprompterFollowsVoice") } }
     @Published var teleprompterLanguage: AppLanguage { didSet { save(teleprompterLanguage.rawValue, "teleprompterLanguage") } }
     @Published var rainAlert: Bool { didSet { save(rainAlert, "rainAlert") } }
@@ -135,6 +140,8 @@ final class AppSettings: ObservableObject {
         showVisualizer = value("showVisualizer", true)
         showLyrics = value("showLyrics", true)
         swipeToChangeTrack = value("swipeToChangeTrack", true)
+        allAudioSources = value("allAudioSources", true)
+        audioGlow = value("audioGlow", true)
         replaceVolumeHUD = value("replaceVolumeHUD", true)
         replaceBrightnessHUD = value("replaceBrightnessHUD", true)
         batteryActivity = value("batteryActivity", true)
@@ -156,6 +163,9 @@ final class AppSettings: ObservableObject {
         mirrorEnabled = value("mirrorEnabled", true)
         shelfEnabled = value("shelfEnabled", true)
         teleprompterEnabled = value("teleprompterEnabled", true)
+        timerEnabled = value("timerEnabled", true)
+        airDropEnabled = value("airDropEnabled", true)
+        conversionEnabled = value("conversionEnabled", true)
         teleprompterFollowsVoice = value("teleprompterFollowsVoice", false)
         teleprompterLanguage = AppLanguage(rawValue: value("teleprompterLanguage", "fr")) ?? .fr
         rainAlert = value("rainAlert", true)

@@ -16,7 +16,7 @@ struct MediaPlayerView: View {
     private func player(_ track: NowPlayingTrack) -> some View {
         HStack(spacing: 14) {
             ZStack(alignment: .bottomTrailing) {
-                ArtworkView(image: media.artwork, size: 96, radius: 16)
+                ArtworkView(image: media.artwork, size: 96, radius: 16, isLogo: media.isLogoArtwork, tint: media.accent)
                     .shadow(color: media.accent.opacity(track.isPlaying ? 0.55 : 0.2), radius: 14)
                     .scaleEffect(track.isPlaying ? 1 : 0.92)
                     .animation(.spring(response: 0.4, dampingFraction: 0.6), value: track.isPlaying)

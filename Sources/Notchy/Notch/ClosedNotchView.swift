@@ -53,7 +53,7 @@ struct CompactLayout {
 
         if media.showsInClosedNotch, let track = media.track {
             return CompactLayout(left: side, right: side) {
-                ArtworkView(image: media.artwork, size: notchHeight - 10, radius: 6)
+                ArtworkView(image: media.artwork, size: notchHeight - 10, radius: 6, isLogo: media.isLogoArtwork, tint: media.accent)
             } trailing: {
                 if AppSettings.shared.showVisualizer {
                     AudioVisualizer(color: media.accent, playing: track.isPlaying)
@@ -349,10 +349,20 @@ struct ArtworkView: View {
     let image: NSImage?
     let size: CGFloat
     let radius: CGFloat
+    /// The image is a site or app logo: fit it on a tile tinted with its color.
+    var isLogo = false
+    var tint: Color = .white
 
     var body: some View {
         Group {
-            if let image {
+            if let image, isLogo {
+                ZStack {
+                    tint.opacity(0.22)
+                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: size * 0.12, style: .continuous))
+                        .padding(size * 0.2)
+                }
+            } else if let image {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
             } else {
                 ZStack {

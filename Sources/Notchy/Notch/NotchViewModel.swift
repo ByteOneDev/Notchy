@@ -134,7 +134,8 @@ final class NotchViewModel: ObservableObject {
             case .teleprompter: settings.teleprompterEnabled
             case .agents: settings.agentsEnabled
             case .mirror: settings.mirrorEnabled
-            case .home, .timer: true
+            case .timer: settings.timerEnabled
+            case .home: true
             }
         }
     }

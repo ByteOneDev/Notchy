@@ -61,6 +61,8 @@ final class MediaKeyMonitor {
         let data = event.data1
         guard let key = Key(rawValue: (data & 0xFFFF0000) >> 16) else { return false }
         let isDown = ((data & 0xFF00) >> 8) == 0xA
+        // In full screen the notch is hidden: let macOS show its own HUD.
+        guard !NotchManager.shared.isFullscreenActive else { return false }
         let settings = AppSettings.shared
         // Option+Shift gives finer steps, like macOS.
         let fine = event.modifierFlags.contains(.option) && event.modifierFlags.contains(.shift)

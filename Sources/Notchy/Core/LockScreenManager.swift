@@ -45,6 +45,7 @@ final class LockScreenManager: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { self.justUnlocked = false }
         }
         NotchManager.shared.controllers.values.forEach { $0.viewModel.close() }
+        updateSpaces(locked: locked)
     }
 
     private func setUpSpace() {
@@ -65,19 +66,12 @@ final class LockScreenManager: ObservableObject {
         _ = setLevel(connection, space, 400)
         _ = showSpaces(connection, [space] as CFArray)
 
-        AppSettings.shared.$showOnLockScreen
-            .dropFirst()
-            .sink { [weak self] _ in
-                DispatchQueue.main.async { self?.refreshAttachedWindows() }
-            }
-            .store(in: &cancellables)
     }
 
     private var panels: [Int: NSWindow] = [:]
 
     func attach(_ window: NSWindow) {
         panels[window.windowNumber] = window
-        if AppSettings.shared.showOnLockScreen { moveToLockSpace(window) }
     }
 
     func detach(_ window: NSWindow) {
@@ -85,22 +79,19 @@ final class LockScreenManager: ObservableObject {
         attached.remove(window.windowNumber)
     }
 
-    private func moveToLockSpace(_ window: NSWindow) {
-        guard space != 0, let addWindows, window.windowNumber > 0 else { return }
-        _ = addWindows(connection, space, [window.windowNumber] as CFArray, 7)
-        attached.insert(window.windowNumber)
-    }
-
-    private func refreshAttachedWindows() {
-        if AppSettings.shared.showOnLockScreen {
-            panels.values.forEach(moveToLockSpace)
-        } else if let removeWindows, space != 0 {
-            for number in attached {
-                _ = removeWindows(connection, [number] as CFArray, [space] as CFArray)
-                panels[number]?.orderFrontRegardless()
+    /// While locked, the windows live in a space above the lock screen. That space shows on top
+    /// of everything (full-screen apps included), so they only stay there while locked.
+    private func updateSpaces(locked: Bool) {
+        if locked {
+            guard AppSettings.shared.showOnLockScreen, space != 0, let addWindows else { return }
+            for window in panels.values where window.windowNumber > 0 {
+                _ = addWindows(connection, space, [window.windowNumber] as CFArray, 7)
+                attached.insert(window.windowNumber)
             }
+        } else if !attached.isEmpty {
             attached.removeAll()
-            panels.values.forEach { $0.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle] }
+            // Fresh windows go back to the regular spaces.
+            NotchManager.shared.rebuild()
         }
     }
 }

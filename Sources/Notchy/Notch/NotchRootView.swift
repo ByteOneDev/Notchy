@@ -56,6 +56,11 @@ struct NotchRootView: View {
 
     private var size: CGSize { viewModel.isOpen ? viewModel.openSize : closedSize }
 
+    /// A thin outline in the artwork's color around the closed notch while sound plays.
+    private var showsAudioGlow: Bool {
+        settings.audioGlow && !viewModel.isOpen && media.track?.isPlaying == true
+    }
+
     private var shape: NotchShape {
         viewModel.isOpen
             ? NotchShape(topRadius: 12, bottomRadius: 32)
@@ -81,6 +86,9 @@ struct NotchRootView: View {
         .overlay {
             if viewModel.dropTargeted {
                 shape.stroke(Color.white.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+            } else if showsAudioGlow {
+                AudioGlow(shape: shape, color: media.accent)
+                    .transition(.opacity.animation(.easeInOut(duration: 0.5)))
             }
         }
         .shadow(color: .black.opacity(viewModel.isOpen ? 0.5 : 0), radius: 14, y: 6)
@@ -101,6 +109,24 @@ struct NotchRootView: View {
         .animation(.notchOpen, value: viewModel.isOpen)
         .animation(.notchActivity, value: size)
         .onChange(of: size, initial: true) { _, newSize in viewModel.shapeSize = newSize }
+    }
+}
+
+/// Outline that breathes slowly in the color of what is playing.
+struct AudioGlow: View {
+    let shape: NotchShape
+    let color: Color
+
+    var body: some View {
+        shape
+            .stroke(color, lineWidth: 1.5)
+            .shadow(color: color.opacity(0.9), radius: 3)
+            .shadow(color: color.opacity(0.6), radius: 9)
+            .phaseAnimator([0.55, 1.0]) { content, phase in
+                content.opacity(phase)
+            } animation: { _ in .easeInOut(duration: 1.8) }
+            .allowsHitTesting(false)
+            .animation(.easeInOut(duration: 0.6), value: color)
     }
 }
 

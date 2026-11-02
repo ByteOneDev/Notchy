@@ -8,7 +8,7 @@ Une app de notch native pour macOS (Swift + SwiftUI), dans l'esprit d'Alcove et 
 
 Sous le notch ouvert, une barre flottante donne accès aux panneaux : **Nook** (vue d'ensemble), **Musique**, **Calendrier**, **Étagère**, **Prompteur**, **Agents IA**, **Minuteur** et **Miroir**. Chacun s'active ou se désactive dans les réglages.
 
-- **Musique** : pochette, visualiseur, paroles synchronisées (LRCLIB), barre de lecture, choix de la sortie audio. Seules les applis audio et les sites autorisés (YouTube, Spotify web, Deezer, SoundCloud…) s'affichent.
+- **Musique** : tous les sons de l'ordinateur, contrôlables depuis le notch. Les applis et sites listés (Spotify, YouTube, Deezer…) s'affichent en entier (pochette, paroles synchronisées, visualiseur) ; les autres seulement avec leur nom et leur logo. Un contour lumineux de la couleur de la pochette entoure le notch pendant la lecture. Choix de la sortie audio.
 - **Calendrier** : agenda des prochains jours et grille du mois, bouton « Rejoindre » pour Meet/Zoom/Teams, glisser à deux doigts pour changer de jour.
 - **Étagère** : dépose des fichiers sur le notch, **AirDrop** et **conversion** (PNG/JPEG/HEIC/TIFF, MP4/MOV, M4A).
 - **Prompteur** : le texte défile sous la caméra, à vitesse fixe ou **en suivant ta voix** (reconnaissance vocale sur le Mac).
@@ -21,7 +21,7 @@ Charge (avec temps restant) et batterie faible, écouteurs Bluetooth, batterie f
 
 ## Réglages
 
-4 styles (noir, semi-transparent, transparent, **Liquid Glass**), largeur et hauteur du notch, raccourcis clavier globaux, sons discrets et retour haptique, masquage dans les captures et partages d'écran, notch caché en plein écran, interface en français (par défaut) et en anglais.
+Toutes les fonctions s'activent ou se désactivent depuis **Réglages → Fonctionnalités**. 4 styles (noir, semi-transparent, transparent, **Liquid Glass**), largeur et hauteur du notch, raccourcis clavier globaux, sons discrets et retour haptique, masquage dans les captures et partages d'écran, notch caché en plein écran, interface en français (par défaut) et en anglais.
 
 ## Compiler
 

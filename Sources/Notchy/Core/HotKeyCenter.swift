@@ -115,7 +115,7 @@ final class HotKeyCenter {
     private func perform(_ action: Action?) {
         switch action {
         case .toggleNotch:
-            guard let viewModel = NotchManager.shared.primaryViewModel else { return }
+            guard let viewModel = NotchManager.shared.primaryViewModel, viewModel.isOpen || !NotchManager.shared.isFullscreenActive else { return }
             viewModel.toggle()
         case .teleprompter:
             NotchManager.shared.openPrimary(tab: .teleprompter)

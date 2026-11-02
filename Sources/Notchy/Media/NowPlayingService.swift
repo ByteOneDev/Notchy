@@ -10,6 +10,8 @@ final class NowPlayingService: ObservableObject {
     @Published private(set) var track: NowPlayingTrack?
     @Published private(set) var artwork: NSImage?
     @Published private(set) var accent: Color = .white
+    /// The artwork is a site or app logo, drawn smaller on a tinted tile.
+    @Published private(set) var isLogoArtwork = false
     /// Last time something played; the closed notch keeps showing a paused track for a while.
     @Published private(set) var lastPlayingDate: Date = .distantPast
 
@@ -36,8 +38,9 @@ final class NowPlayingService: ObservableObject {
             }
             source.start()
         }
-        AppSettings.shared.$allowedApps.merge(with: AppSettings.shared.$allowedDomains)
-            .dropFirst(2)
+        AppSettings.shared.$allowedApps.map { _ in () }
+            .merge(with: AppSettings.shared.$allowedDomains.map { _ in () }, AppSettings.shared.$allAudioSources.map { _ in () })
+            .dropFirst(3)
             .sink { [weak self] _ in DispatchQueue.main.async { self?.resolve(preferring: nil) } }
             .store(in: &cancellables)
     }
@@ -78,11 +81,30 @@ final class NowPlayingService: ObservableObject {
         if changedTrack || artwork == nil {
             applyArtwork(source.flatMap { artworks[ObjectIdentifier($0)] })
         }
-        if changedTrack, let newTrack { LyricsService.shared.load(for: newTrack) }
+        if changedTrack, let newTrack {
+            if newTrack.logoOnly { LyricsService.shared.clear() } else { LyricsService.shared.load(for: newTrack) }
+        }
     }
 
+    /// Shows the artwork; a source without one (or shown by name only) gets its logo instead,
+    /// which also gives the accent color.
     private func applyArtwork(_ image: NSImage?) {
+        if let image, track?.logoOnly != true {
+            setArtwork(image, isLogo: false)
+            return
+        }
+        guard let track else { return setArtwork(nil, isLogo: false) }
+        let identity = track.identity
+        Task {
+            let logo = await SourceLogos.logo(for: track)
+            guard self.track?.identity == identity else { return }
+            self.setArtwork(logo, isLogo: logo != nil)
+        }
+    }
+
+    private func setArtwork(_ image: NSImage?, isLogo: Bool) {
         artwork = image
+        isLogoArtwork = isLogo
         withAnimation(.easeInOut(duration: 0.4)) { accent = image?.accentColor ?? .white }
     }
 

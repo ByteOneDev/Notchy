@@ -111,6 +111,14 @@ final class NotchWindowController {
         AppSettings.shared.$hideFromScreenCapture
             .sink { [weak self] hide in self?.panel.sharingType = hide ? .none : .readOnly }
             .store(in: &cancellables)
+        // Without .fullScreenAuxiliary, macOS itself keeps the window out of full-screen spaces.
+        AppSettings.shared.$hideInFullscreen
+            .sink { [weak self] hide in
+                var behavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+                if !hide { behavior.insert(.fullScreenAuxiliary) }
+                self?.panel.collectionBehavior = behavior
+            }
+            .store(in: &cancellables)
         viewModel.$tab
             .removeDuplicates()
             .dropFirst()
@@ -141,7 +149,7 @@ final class NotchWindowController {
     private func mouseMoved(_ event: NSEvent) {
         let location = NSEvent.mouseLocation
         guard screen.frame.contains(location) || viewModel.isOpen else { return }
-        if viewModel.hiddenForFullscreen {
+        if viewModel.hiddenForFullscreen || !panel.isOnActiveSpace {
             panel.ignoresMouseEvents = true
             return
         }
