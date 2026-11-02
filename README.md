@@ -42,8 +42,14 @@ Télécharger **la dernière version** : [Notchy (DMG)](https://github.com/ByteO
 
 Ensuite, Notchy se met à jour tout seul (Réglages → À propos).
 
-L'app n'est pas notarisée par Apple. Après l'avoir copiée dans Applications :
+L'app est signée (runtime renforcé, horodatage Apple) avec un certificat personnel, mais pas notarisée : la notarisation demande un compte Apple Developer payant. Gatekeeper la refuse donc au premier lancement. Après l'avoir copiée dans Applications :
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/Notchy.app
+```
+
+Chaque release publie l'empreinte SHA-256 du DMG et du zip, pour vérifier un téléchargement :
+
+```bash
+shasum -a 256 ~/Downloads/Notchy-*.dmg
 ```
