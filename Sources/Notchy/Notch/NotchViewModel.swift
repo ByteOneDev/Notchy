@@ -62,7 +62,9 @@ final class NotchViewModel: ObservableObject {
     enum State { case closed, open }
 
     @Published private(set) var state: State = .closed
-    @Published var tab: NotchTab = .home
+    @Published var tab: NotchTab = .home {
+        didSet { if tab != oldValue { CalendarService.shared.agendaOffset = 0 } }
+    }
     @Published var hovering = false
     @Published var hiddenForFullscreen = false
     @Published var dropTargeted = false
@@ -118,6 +120,7 @@ final class NotchViewModel: ObservableObject {
     func close() {
         guard state != .closed else { return }
         withAnimation(.notchClose) { state = .closed }
+        CalendarService.shared.agendaOffset = 0
         if tab == .mirror { tab = .home }
     }
 
@@ -145,16 +148,20 @@ final class NotchViewModel: ObservableObject {
     private var scrollX: CGFloat = 0
     private var scrollY: CGFloat = 0
     private var gestureConsumed = false
+    /// The current gesture scrolls the calendar agenda (decided on its first move).
+    private var scrollingAgenda: Bool?
 
     func handleScroll(_ event: NSEvent) {
         guard !hiddenForFullscreen else { return }
         if event.phase == .began || (event.phase.isEmpty && event.momentumPhase.isEmpty && !gestureConsumed && scrollX == 0 && scrollY == 0) {
             scrollX = 0; scrollY = 0; gestureConsumed = false
         }
+        if event.phase == .began || event.phase == .mayBegin { scrollingAgenda = nil }
         if event.phase == .ended || event.phase == .cancelled {
             scrollX = 0; scrollY = 0; gestureConsumed = false
             return
         }
+        if scrollAgenda(with: event) { return }
         guard event.momentumPhase.isEmpty, !gestureConsumed else { return }
         let natural = event.isDirectionInvertedFromDevice
         // Deltas in the direction the fingers move.
@@ -188,6 +195,24 @@ final class NotchViewModel: ObservableObject {
             // Closed: a two-finger swipe either way opens. Open: swiping up closes.
             if !isOpen { open() } else if scrollY < 0, !isPinned { close() }
         }
+    }
+
+    /// Over a calendar agenda longer than its space, a vertical scroll moves the list (with
+    /// its momentum) instead of closing the notch. Horizontal swipes still change the day.
+    private func scrollAgenda(with event: NSEvent) -> Bool {
+        let calendar = CalendarService.shared
+        let isWheel = event.phase.isEmpty && event.momentumPhase.isEmpty
+        if scrollingAgenda == nil || isWheel {
+            guard event.scrollingDeltaX != 0 || event.scrollingDeltaY != 0 else { return false }
+            scrollingAgenda = isOpen && (tab == .home || tab == .calendar) && calendar.agendaHovered
+                && calendar.agendaMaxOffset > 0 && abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX)
+        }
+        guard scrollingAgenda == true else { return false }
+        // A mouse wheel counts in lines, a trackpad in points.
+        let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 12
+        calendar.scrollAgenda(by: -delta)
+        if event.momentumPhase == .ended { scrollingAgenda = nil }
+        return true
     }
 
     /// The notch stays open while the teleprompter is being read or edited.

@@ -18,9 +18,16 @@ final class CalendarService: ObservableObject {
 
     @Published private(set) var authorized = false
     @Published private(set) var events: [Event] = []
-    @Published var selectedDay = Calendar.current.startOfDay(for: .now)
+    @Published var selectedDay = Calendar.current.startOfDay(for: .now) {
+        didSet { agendaOffset = 0 }
+    }
     /// The mouse is over the calendar widget: horizontal swipes change the day.
     var isHovered = false
+    /// The agenda list is under the mouse, and how far down it can go. The notch scrolls it
+    /// itself: a scroll view would swallow the swipes that change the day.
+    var agendaHovered = false
+    var agendaMaxOffset: CGFloat = 0
+    @Published var agendaOffset: CGFloat = 0
     /// Video call the mirror is currently preparing for.
     @Published private(set) var prepEvent: Event?
     private var prepared = Set<String>()
@@ -48,6 +55,10 @@ final class CalendarService: ObservableObject {
                 NSWorkspace.shared.open(url)
             }
         }
+    }
+
+    func scrollAgenda(by delta: CGFloat) {
+        agendaOffset = min(max(0, agendaOffset + delta), agendaMaxOffset)
     }
 
     func moveSelection(by days: Int) {

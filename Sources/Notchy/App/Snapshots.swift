@@ -31,6 +31,12 @@ enum Snapshots {
             model.tab = tab
             save(frame(OpenNotchView(viewModel: model), size: model.openSize), to: folder.appendingPathComponent("tab-\(tab.rawValue).png"))
         }
+        // The agenda scrolled down, to check the faded edges and the clipping.
+        model.tab = .calendar
+        CalendarService.shared.agendaMaxOffset = 90
+        CalendarService.shared.scrollAgenda(by: 90)
+        save(frame(OpenNotchView(viewModel: model), size: model.openSize), to: folder.appendingPathComponent("tab-calendar-scrolled.png"))
+        CalendarService.shared.agendaOffset = 0
         model.tab = .home
         for layout in homeLayouts {
             let name = layout.map(\.rawValue).joined(separator: "-")

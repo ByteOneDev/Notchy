@@ -26,12 +26,6 @@ struct CalendarWidget: View {
                     .lineLimit(1)
                     .contentTransition(.numericText())
                 Spacer()
-                let hidden = service.events(on: selected).count - 2
-                if service.authorized, hidden > 0 {
-                    Text(L("calendar.more", hidden))
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.45))
-                }
                 if !calendar.isDateInToday(selected) {
                     Button(L("calendar.today")) {
                         withAnimation(.snappy) { service.selectedDay = calendar.startOfDay(for: .now) }
@@ -83,13 +77,11 @@ struct CalendarWidget: View {
             .font(.system(size: 12))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            // No scroll view: it would swallow the two-finger swipes that change the day.
-            let shown = Array(events.prefix(2))
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(shown) { EventRow(event: $0, locale: settings.language.locale) }
-                Spacer(minLength: 0)
+            AgendaScroller {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(events) { EventRow(event: $0, locale: settings.language.locale) }
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 }

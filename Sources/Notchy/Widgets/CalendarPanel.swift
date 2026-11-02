@@ -57,44 +57,31 @@ struct CalendarPanel: View {
                         .font(.system(size: 12)).foregroundStyle(.white.opacity(0.5))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    // Fits the panel; no scroll view so two-finger swipes keep changing the day.
-                    VStack(alignment: .leading, spacing: 5) {
-                        ForEach(sections.prefix(3), id: \.day) { section in
-                            if !calendar.isDate(section.day, inSameDayAs: service.selectedDay) {
-                                Text(section.day.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(settings.language.locale)).uppercased())
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(.white.opacity(0.4))
-                                    .padding(.top, 2)
+                    AgendaScroller {
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(sections, id: \.day) { section in
+                                if !calendar.isDate(section.day, inSameDayAs: service.selectedDay) {
+                                    Text(section.day.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(settings.language.locale)).uppercased())
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundStyle(.white.opacity(0.4))
+                                        .padding(.top, 2)
+                                }
+                                ForEach(section.events) { EventCard(event: $0, locale: settings.language.locale) }
                             }
-                            ForEach(section.events) { EventCard(event: $0, locale: settings.language.locale) }
-                        }
-                        let hidden = service.events(on: service.selectedDay).count - (sections.first?.events.count ?? 0)
-                        if calendar.isDate(sections[0].day, inSameDayAs: service.selectedDay), hidden > 0 {
-                            Text(L("calendar.more", hidden))
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.45))
-                                .padding(.leading, 12)
                         }
                     }
                 }
             }
-            Spacer(minLength: 0)
         }
     }
 
     /// The selected day and the following days that have events, up to a week ahead.
     private func upcomingSections() -> [(day: Date, events: [CalendarService.Event])] {
-        var sections: [(day: Date, events: [CalendarService.Event])] = []
-        var budget = 3
-        for offset in 0..<8 {
-            guard budget > 0, let day = calendar.date(byAdding: .day, value: offset, to: service.selectedDay) else { break }
+        (0..<8).compactMap { offset in
+            guard let day = calendar.date(byAdding: .day, value: offset, to: service.selectedDay) else { return nil }
             let events = service.events(on: day)
-            guard !events.isEmpty else { continue }
-            let shown = Array(events.prefix(budget))
-            sections.append((day, shown))
-            budget -= shown.count
+            return events.isEmpty ? nil : (day, events)
         }
-        return sections
     }
 }
 
