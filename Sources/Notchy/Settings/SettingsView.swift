@@ -200,6 +200,16 @@ private struct AppearancePane: View {
         }
         GlowSettingsSection()
         Section {
+            Picker(L("settings.dayPicker"), selection: $settings.dayPickerStyle) {
+                ForEach(DayPickerStyle.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text(L("settings.dayPicker.section"))
+        } footer: {
+            Text(L("settings.dayPicker.hint")).font(.caption).foregroundStyle(.secondary)
+        }
+        Section {
             Toggle(L("settings.size.adaptive"), isOn: $settings.adaptiveSize)
             LabeledContent(L("settings.size.width")) {
                 Slider(value: $settings.openWidth, in: 640...1200, step: 10) { EmptyView() }.frame(width: 200)

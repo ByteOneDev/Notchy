@@ -19,8 +19,13 @@ final class CalendarService: ObservableObject {
     @Published private(set) var authorized = false
     @Published private(set) var events: [Event] = []
     @Published var selectedDay = Calendar.current.startOfDay(for: .now) {
-        didSet { agendaOffset = 0 }
+        didSet {
+            agendaOffset = 0
+            if selectedDay != oldValue { movedForward = selectedDay > oldValue }
+        }
     }
+    /// Direction of the last day change, for the transitions.
+    private(set) var movedForward = true
     /// The mouse is over the calendar widget: horizontal swipes change the day.
     var isHovered = false
     /// The agenda list is under the mouse, and how far down it can go. The notch scrolls it

@@ -42,6 +42,15 @@ enum Snapshots {
         save(frame(OpenNotchView(viewModel: model), size: model.openSize), to: folder.appendingPathComponent("tab-calendar-scrolled.png"))
         CalendarService.shared.agendaOffset = 0
         model.tab = .home
+        // Each style of the calendar's day picker (the setting is put back afterwards).
+        let settings = AppSettings.shared
+        let style = settings.dayPickerStyle
+        for picker in DayPickerStyle.allCases {
+            settings.dayPickerStyle = picker
+            let view = OpenNotchView(viewModel: model, homeOverride: [.media, .calendar])
+            save(frame(view, size: model.openSize), to: folder.appendingPathComponent("daypicker-\(picker.rawValue).png"))
+        }
+        settings.dayPickerStyle = style
         for layout in homeLayouts {
             let name = layout.map(\.rawValue).joined(separator: "-")
             let view = OpenNotchView(viewModel: model, homeOverride: layout)

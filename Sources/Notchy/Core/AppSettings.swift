@@ -20,6 +20,13 @@ enum DisplayTarget: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// How the home calendar picks its day.
+enum DayPickerStyle: String, CaseIterable, Identifiable {
+    case notchNook, carousel, bigDate
+    var id: String { rawValue }
+    var title: String { L("settings.dayPicker.\(rawValue)") }
+}
+
 enum TemperatureUnit: String, CaseIterable, Identifiable {
     case celsius, fahrenheit
     var id: String { rawValue }
@@ -74,6 +81,7 @@ final class AppSettings: ObservableObject {
 
     // Widgets
     @Published var calendarEnabled: Bool { didSet { save(calendarEnabled, "calendarEnabled") } }
+    @Published var dayPickerStyle: DayPickerStyle { didSet { save(dayPickerStyle.rawValue, "dayPickerStyle") } }
     @Published var weatherEnabled: Bool { didSet { save(weatherEnabled, "weatherEnabled") } }
     @Published var weatherUsesLocation: Bool { didSet { save(weatherUsesLocation, "weatherUsesLocation") } }
     @Published var weatherCity: String { didSet { save(weatherCity, "weatherCity") } }
@@ -182,6 +190,7 @@ final class AppSettings: ObservableObject {
         privacyActivity = value("privacyActivity", true)
         meetingActivity = value("meetingActivity", true)
         calendarEnabled = value("calendarEnabled", true)
+        dayPickerStyle = DayPickerStyle(rawValue: value("dayPickerStyle", "notchNook")) ?? .notchNook
         weatherEnabled = value("weatherEnabled", true)
         weatherUsesLocation = value("weatherUsesLocation", true)
         weatherCity = value("weatherCity", "Paris")

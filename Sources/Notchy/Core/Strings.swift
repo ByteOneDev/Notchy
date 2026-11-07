@@ -482,5 +482,14 @@ enum Strings {
         "timer.resume": ("Reprendre", "Resume"),
         "timer.endsAt": ("Fin à %@", "Ends at %@"),
         "timer.rulerHint": ("Fais glisser la règle, ou glisse à deux doigts", "Drag the ruler, or swipe with two fingers"),
+
+        // Calendar day picker
+        "settings.dayPicker.section": ("Calendrier du Nook", "Nook calendar"),
+        "settings.dayPicker": ("Sélecteur de jour", "Day picker"),
+        "settings.dayPicker.notchNook": ("NotchNook", "NotchNook"),
+        "settings.dayPicker.carousel": ("Carrousel", "Carousel"),
+        "settings.dayPicker.bigDate": ("Grande date", "Big date"),
+        "settings.dayPicker.hint": ("NotchNook : la semaine avec une pastille rouge. Carrousel : les jours défilent sous une pastille fixe. Grande date : le jour en grand, comme un éphéméride.",
+                                    "NotchNook: the week with a red disc. Carousel: days slide under a fixed highlight. Big date: the day in large type, like a desk calendar."),
     ]
 }

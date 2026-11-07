@@ -5,10 +5,12 @@ extension Animation {
     static let daySlide = Animation.spring(response: 0.38, dampingFraction: 0.82)
 }
 
-/// Week strip on top, the selected day's agenda below. Swipe with two fingers to change day.
+/// Day picker on top (in the style chosen in the settings), the selected day's agenda below.
+/// Swipe with two fingers to change day.
 struct CalendarWidget: View {
     @ObservedObject private var service = CalendarService.shared
     @ObservedObject private var settings = AppSettings.shared
+    @Namespace private var selection
 
     private var calendar: Calendar {
         var calendar = Calendar.current
@@ -19,34 +21,147 @@ struct CalendarWidget: View {
     private var selected: Date { service.selectedDay }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(selected.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(settings.language.locale)).capitalized)
-                    .font(.system(size: 14, weight: .semibold))
-                    .lineLimit(1)
-                    .contentTransition(.numericText())
-                Spacer()
-                if !calendar.isDateInToday(selected) {
-                    Button(L("calendar.today")) {
-                        withAnimation(.snappy) { service.selectedDay = calendar.startOfDay(for: .now) }
-                        service.reload()
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.red)
+        Group {
+            switch settings.dayPickerStyle {
+            case .notchNook:
+                VStack(alignment: .leading, spacing: 8) {
+                    notchNookHeader
+                    weekRow
+                    agendaOrAccess
                 }
-            }
-            dayStrip
-            if service.authorized {
-                agenda
-            } else {
-                Button(L("calendar.allow")) { service.requestAccess() }
-                    .buttonStyle(PillButtonStyle())
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .carousel:
+                VStack(alignment: .leading, spacing: 6) {
+                    titleHeader
+                    dayStrip
+                    agendaOrAccess
+                }
+            case .bigDate:
+                HStack(alignment: .top, spacing: 16) {
+                    bigDate
+                    agendaOrAccess
+                }
             }
         }
         .contentShape(Rectangle())
         .onHover { service.isHovered = $0 }
+    }
+
+    @ViewBuilder private var agendaOrAccess: some View {
+        if service.authorized {
+            agenda
+        } else {
+            Button(L("calendar.allow")) { service.requestAccess() }
+                .buttonStyle(PillButtonStyle())
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var todayButton: some View {
+        Button(L("calendar.today")) {
+            withAnimation(.daySlide) { service.selectedDay = calendar.startOfDay(for: .now) }
+            service.reload()
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 11, weight: .medium))
+        .foregroundStyle(.red)
+        .opacity(calendar.isDateInToday(selected) ? 0 : 1)
+        .disabled(calendar.isDateInToday(selected))
+    }
+
+    // MARK: NotchNook style
+
+    /// "SAM. 7 NOV.  S45", like NotchNook's calendar.
+    private var notchNookHeader: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Text(selected.formatted(.dateTime.weekday(.abbreviated).locale(settings.language.locale)).uppercased())
+                .foregroundStyle(.red)
+            Text("\(calendar.component(.day, from: selected))")
+                .contentTransition(.numericText(countsDown: !service.movedForward))
+            Text(selected.formatted(.dateTime.month(.abbreviated).locale(settings.language.locale)).uppercased())
+            Text(L("calendar.week", calendar.component(.weekOfYear, from: selected)))
+                .foregroundStyle(.white.opacity(0.35))
+            Spacer()
+            todayButton
+        }
+        .font(.system(size: 13, weight: .bold))
+        .animation(.daySlide, value: selected)
+    }
+
+    /// The selected day's week; a red disc slides to the chosen day, and the week itself
+    /// slides over when the selection leaves it.
+    private var weekRow: some View {
+        let start = calendar.dateInterval(of: .weekOfYear, for: selected)?.start ?? selected
+        let week = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
+        return HStack(spacing: 0) {
+            ForEach(week, id: \.self) { day in
+                let isSelected = calendar.isDate(day, inSameDayAs: selected)
+                let isToday = calendar.isDateInToday(day)
+                let isWeekend = calendar.isDateInWeekend(day)
+                VStack(spacing: 3) {
+                    Text(day.formatted(.dateTime.weekday(.narrow).locale(settings.language.locale)).uppercased())
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.4))
+                    ZStack {
+                        if isSelected {
+                            Circle().fill(Color.red).matchedGeometryEffect(id: "selectedDay", in: selection)
+                        } else if isToday {
+                            Circle().stroke(Color.red.opacity(0.7), lineWidth: 1.2)
+                        }
+                        Text("\(calendar.component(.day, from: day))")
+                            .font(.system(size: 12.5, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(isSelected ? .white : isToday ? .red : .white.opacity(isWeekend ? 0.45 : 0.9))
+                    }
+                    .frame(width: 25, height: 25)
+                    Circle().fill(service.events(on: day).isEmpty ? Color.clear : Color.white.opacity(0.45))
+                        .frame(width: 3, height: 3)
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture { withAnimation(.daySlide) { service.selectedDay = day } }
+            }
+        }
+        .id(start)
+        .transition(.asymmetric(
+            insertion: .move(edge: service.movedForward ? .trailing : .leading).combined(with: .opacity),
+            removal: .move(edge: service.movedForward ? .leading : .trailing).combined(with: .opacity)))
+        .frame(height: 44)
+        .frame(minWidth: 0, maxWidth: .infinity)
+        .clipped()
+        .animation(.daySlide, value: selected)
+    }
+
+    // MARK: Carousel style
+
+    private var titleHeader: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(selected.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(settings.language.locale)).capitalized)
+                .font(.system(size: 14, weight: .semibold))
+                .lineLimit(1)
+                .contentTransition(.numericText())
+            Spacer()
+            todayButton
+        }
+    }
+
+    // MARK: Big date style
+
+    /// The day in big type, like a desk calendar page; swipes flip it.
+    private var bigDate: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(selected.formatted(.dateTime.weekday(.wide).locale(settings.language.locale)).uppercased())
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.red)
+            Text("\(calendar.component(.day, from: selected))")
+                .font(.system(size: 46, weight: .semibold).monospacedDigit())
+                .contentTransition(.numericText(countsDown: !service.movedForward))
+            Text(selected.formatted(.dateTime.month(.wide).year().locale(settings.language.locale)).capitalized)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.5))
+            Spacer(minLength: 4)
+            todayButton
+        }
+        .frame(width: 92, alignment: .leading)
+        .animation(.daySlide, value: selected)
     }
 
     /// A carousel: the highlight stays in the middle and the days slide under it, smaller and
