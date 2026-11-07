@@ -167,7 +167,8 @@ struct AudioGlow: View {
         }
         .offset(y: settings.glowOffset)
         .opacity(settings.glowIntensity)
-        .drawingGroup()
+        // No drawingGroup here: it would flatten the glow into an image cut to the notch's
+        // frame, leaving only the light around the top corners.
     }
 
     /// A glowing line along the sides and bottom of the notch.

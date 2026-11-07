@@ -39,6 +39,8 @@ struct ModeRule: Codable, Identifiable, Equatable {
     /// Shortcut run when the mode starts, e.g. one that turns a macOS Focus on.
     var startShortcut = ""
     var endShortcut = ""
+    /// Sites kept closed in the browsers while the mode is active ("youtube.com").
+    var blockedSites: [String] = []
 
     static var defaults: [ModeRule] {
         [
@@ -49,6 +51,29 @@ struct ModeRule: Codable, Identifiable, Equatable {
 
     static let icons = ["brain.head.profile", "video.fill", "moon.fill", "briefcase.fill", "book.fill", "gamecontroller.fill",
                         "laptopcomputer", "headphones", "house.fill", "figure.run", "paintbrush.fill", "chevron.left.forwardslash.chevron.right"]
+}
+
+extension ModeRule {
+    /// Tolerates modes saved by older versions: a missing setting takes its default.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let base = ModeRule(name: "", icon: "moon.fill", trigger: .schedule)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? base.name
+        icon = try c.decodeIfPresent(String.self, forKey: .icon) ?? base.icon
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? base.enabled
+        trigger = try c.decodeIfPresent(Trigger.self, forKey: .trigger) ?? base.trigger
+        startMinutes = try c.decodeIfPresent(Int.self, forKey: .startMinutes) ?? base.startMinutes
+        endMinutes = try c.decodeIfPresent(Int.self, forKey: .endMinutes) ?? base.endMinutes
+        weekdays = try c.decodeIfPresent([Int].self, forKey: .weekdays) ?? base.weekdays
+        appBundleID = try c.decodeIfPresent(String.self, forKey: .appBundleID) ?? base.appBundleID
+        appName = try c.decodeIfPresent(String.self, forKey: .appName) ?? base.appName
+        pauseMusic = try c.decodeIfPresent(Bool.self, forKey: .pauseMusic) ?? base.pauseMusic
+        silence = try c.decodeIfPresent(Bool.self, forKey: .silence) ?? base.silence
+        startShortcut = try c.decodeIfPresent(String.self, forKey: .startShortcut) ?? base.startShortcut
+        endShortcut = try c.decodeIfPresent(String.self, forKey: .endShortcut) ?? base.endShortcut
+        blockedSites = try c.decodeIfPresent([String].self, forKey: .blockedSites) ?? base.blockedSites
+    }
 }
 
 /// Watches the modes' triggers and runs their actions on each change.

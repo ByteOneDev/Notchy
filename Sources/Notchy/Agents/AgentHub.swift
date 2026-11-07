@@ -117,6 +117,8 @@ final class AgentHub: ObservableObject {
         case "/agent":
             handleGeneric(json)
             respond(.json([:]))
+        case let path where path.hasPrefix("/blocked"):
+            respond(SiteBlocker.shared.response(for: path))
         default:
             respond(.init(status: 404))
         }

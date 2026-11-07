@@ -84,6 +84,7 @@ struct ModesPane: View {
         }
         Toggle(L("modes.silence"), isOn: mode.silence)
         Toggle(L("modes.pauseMusic"), isOn: mode.pauseMusic)
+        BlockedSitesField(sites: mode.blockedSites)
         shortcutPicker(L("modes.startShortcut"), mode.startShortcut)
         shortcutPicker(L("modes.endShortcut"), mode.endShortcut)
         HStack {
@@ -130,5 +131,21 @@ struct ModesPane: View {
         guard panel.runModal() == .OK, let url = panel.url, let bundle = Bundle(url: url), let id = bundle.bundleIdentifier else { return }
         mode.wrappedValue.appBundleID = id
         mode.wrappedValue.appName = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+    }
+}
+
+/// Sites separated by commas; kept as typed, read into clean domains as it changes.
+private struct BlockedSitesField: View {
+    @Binding var sites: [String]
+    @State private var text = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            TextField(L("modes.blockedSites"), text: $text, prompt: Text("youtube.com, x.com, instagram.com"), axis: .vertical)
+                .lineLimit(1...3)
+                .onAppear { text = sites.joined(separator: ", ") }
+                .onChange(of: text) { sites = SiteBlocker.parse(text) }
+            Text(L("modes.blockedSites.hint")).font(.caption).foregroundStyle(.secondary)
+        }
     }
 }

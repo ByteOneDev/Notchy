@@ -496,5 +496,14 @@ enum Strings {
         "settings.dayPicker.bigDate": ("Grande date", "Big date"),
         "settings.dayPicker.hint": ("NotchNook : la semaine avec une pastille rouge. Carrousel : les jours défilent sous une pastille fixe. Règle : une graduation par jour sous une aiguille, comme le minuteur. Grande date : le jour en grand, comme un éphéméride. Tous se font glisser à la souris ou à deux doigts.",
                                     "NotchNook: the week with a red disc. Carousel: days slide under a fixed highlight. Ruler: a tick per day under a needle, like the timer. Big date: the day in large type, like a desk calendar. All of them can be dragged or swiped."),
+
+        // Site blocking
+        "modes.blockedSites": ("Sites bloqués", "Blocked sites"),
+        "modes.blockedSites.hint": ("Pendant ce mode, ces sites sont fermés dans Safari, Chrome, Brave, Arc, Edge, Vivaldi et Opera (pas Firefox), et rouverts à la fin. macOS demande une fois l'autorisation de piloter chaque navigateur.",
+                                    "While this mode is on, these sites are closed in Safari, Chrome, Brave, Arc, Edge, Vivaldi and Opera (not Firefox), and reopened at the end. macOS asks once for permission to control each browser."),
+        "blocker.title": ("%@ est bloqué", "%@ is blocked"),
+        "blocker.subtitle": ("Le mode « %@ » est actif. La page reviendra toute seule quand il sera terminé.",
+                             "The “%@” mode is on. This page will come back by itself when it ends."),
+        "blocker.ended": ("Ce site n'est plus bloqué.", "This site is no longer blocked."),
     ]
 }

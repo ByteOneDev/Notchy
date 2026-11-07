@@ -37,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         KeyboardBacklightMonitor.shared.start()
         NetworkChangeMonitor.shared.start()
         ModeEngine.shared.start()
+        SiteBlocker.shared.start()
         HotKeyCenter.shared.start()
         UpdateChecker.shared.start()
         NotchManager.shared.start()
