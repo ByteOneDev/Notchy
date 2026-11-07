@@ -24,6 +24,16 @@ fi
 SIGN_FLAGS=()
 [[ "$IDENTITY" != "-" ]] && SIGN_FLAGS=(--timestamp --options runtime)
 
+# Apple's timestamp server sometimes doesn't answer: try the signature again before giving up.
+sign() {
+  for attempt in 1 2 3; do
+    codesign "$@" && return 0
+    echo "codesign failed (attempt $attempt), retrying…" >&2
+    sleep 3
+  done
+  return 1
+}
+
 swift build -c release --arch arm64
 BIN_DIR=$(swift build -c release --arch arm64 --show-bin-path)
 
@@ -40,10 +50,10 @@ mkdir -p "$APP/Contents/Resources/MediaAdapter"
 clang -fobjc-arc -O2 -dynamiclib -arch arm64 -mmacosx-version-min=15.0 -framework Foundation \
   -o "$APP/Contents/Resources/MediaAdapter/NotchyMediaAdapter.dylib" MediaAdapter/NotchyMediaAdapter.m
 cp MediaAdapter/run.pl "$APP/Contents/Resources/MediaAdapter/run.pl"
-codesign --force --sign "$IDENTITY" "${SIGN_FLAGS[@]}" "$APP/Contents/Resources/MediaAdapter/NotchyMediaAdapter.dylib"
+sign --force --sign "$IDENTITY" "${SIGN_FLAGS[@]}" "$APP/Contents/Resources/MediaAdapter/NotchyMediaAdapter.dylib"
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$BUILD_NUMBER" "$APP/Contents/Info.plist"
 
-codesign --force --sign "$IDENTITY" "${SIGN_FLAGS[@]}" --entitlements Resources/Notchy.entitlements "$APP"
+sign --force --sign "$IDENTITY" "${SIGN_FLAGS[@]}" --entitlements Resources/Notchy.entitlements "$APP"
 codesign --verify --strict --deep "$APP"
 echo "Built $APP $VERSION ($BUILD_NUMBER), signed with: $IDENTITY"
