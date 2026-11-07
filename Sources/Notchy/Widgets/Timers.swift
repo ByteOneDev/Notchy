@@ -103,8 +103,35 @@ final class QuickTimer: ObservableObject {
     @Published private(set) var total: TimeInterval = 0
     @Published private(set) var isActive = false
     @Published private(set) var isRunning = false
+    /// Minutes picked on the ruler; fractional while it moves. Remembered for next time.
+    @Published private(set) var dial: Double = UserDefaults.standard.object(forKey: "timerDial") as? Double ?? 5
+    /// The mouse is over the ruler: horizontal swipes turn it.
+    var rulerHovered = false
     private var endDate: Date?
     private var timer: Timer?
+
+    static let dialRange: ClosedRange<Double> = 1...180
+    var dialMinutes: Int { Int(dial.rounded()) }
+
+    /// Moves the ruler, with a haptic tick at each minute like a picker wheel.
+    func setDial(_ value: Double) {
+        let before = dialMinutes
+        dial = min(max(value, Self.dialRange.lowerBound), Self.dialRange.upperBound)
+        if dialMinutes != before { Haptics.tap() }
+    }
+
+    func turnDial(by minutes: Double) { setDial(dial + minutes) }
+
+    /// Lands on a whole minute.
+    func settleDial() {
+        withAnimation(.snappy(duration: 0.25)) { dial = dial.rounded() }
+        UserDefaults.standard.set(dial, forKey: "timerDial")
+    }
+
+    func startFromDial() {
+        settleDial()
+        start(minutes: dialMinutes)
+    }
 
     func start(minutes: Int) {
         total = TimeInterval(minutes * 60)
@@ -208,37 +235,137 @@ struct TimerTabView: View {
     }
 
     private var timerPanel: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(L("timer.title")).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.5))
-            if timer.isActive {
-                HStack(spacing: 12) {
-                    Text(timer.remaining.clock).font(.system(size: 34, weight: .semibold).monospacedDigit()).foregroundStyle(.orange)
-                        .contentTransition(.numericText(countsDown: true))
-                        .animation(.default, value: Int(timer.remaining))
-                    Spacer(minLength: 0)
-                    Button { timer.isRunning ? timer.pause() : timer.resume() } label: {
-                        Image(systemName: timer.isRunning ? "pause.fill" : "play.fill")
-                    }
-                    .buttonStyle(CircleButtonStyle(color: .orange))
-                    Button { timer.stop() } label: { Image(systemName: "xmark") }
-                        .buttonStyle(CircleButtonStyle())
-                }
-                HStack(spacing: 6) {
-                    ForEach([1, 5], id: \.self) { m in
-                        Button("+\(m) min") { timer.add(minutes: m) }.buttonStyle(PillButtonStyle(color: .white.opacity(0.15)))
-                    }
-                }
-            } else {
-                let presets = [1, 3, 5, 10, 15, 20, 30, 45]
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
-                    ForEach(presets, id: \.self) { minutes in
-                        Button("\(minutes) min") { timer.start(minutes: minutes) }
-                            .buttonStyle(PillButtonStyle(color: .white.opacity(0.15)))
-                    }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(L("timer.title")).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.5))
+                Spacer()
+                if timer.isActive, timer.isRunning {
+                    Text(L("timer.endsAt", Date.now.addingTimeInterval(timer.remaining)
+                        .formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(Loc.locale))))
+                        .font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.45))
                 }
             }
-            Spacer(minLength: 0)
+            HStack(alignment: .center, spacing: 8) {
+                Text((timer.isActive ? timer.remaining : TimeInterval(timer.dialMinutes * 60)).clock)
+                    .font(.system(size: 32, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(timer.isActive ? ClassicColors.orange : .white)
+                    .contentTransition(.numericText(countsDown: timer.isActive))
+                    .animation(.snappy(duration: 0.2), value: timer.isActive ? Int(timer.remaining) : timer.dialMinutes)
+                Spacer(minLength: 0)
+                if timer.isActive {
+                    Button(timer.isRunning ? L("timer.pause") : L("timer.resume")) {
+                        timer.isRunning ? timer.pause() : timer.resume()
+                    }
+                    .buttonStyle(ClassicButtonStyle(color: timer.isRunning ? ClassicColors.orange : ClassicColors.green))
+                    Button(L("common.cancel")) { timer.stop() }
+                        .buttonStyle(ClassicButtonStyle(color: ClassicColors.gray))
+                } else {
+                    Button(L("timer.start")) { timer.startFromDial() }
+                        .buttonStyle(ClassicButtonStyle(color: ClassicColors.green))
+                }
+            }
+            if timer.isActive {
+                HStack(spacing: 8) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.white.opacity(0.15))
+                            Capsule().fill(ClassicColors.orange)
+                                .frame(width: geo.size.width * (timer.total > 0 ? timer.remaining / timer.total : 0))
+                                .animation(.linear(duration: 0.5), value: timer.remaining)
+                        }
+                    }
+                    .frame(height: 6)
+                    Button("+1 min") { timer.add(minutes: 1) }
+                        .buttonStyle(ClassicButtonStyle(color: ClassicColors.gray, compact: true))
+                }
+                .frame(maxHeight: .infinity)
+            } else {
+                TimerRuler()
+            }
         }
+    }
+}
+
+/// The colors of the Clock app on iOS and macOS.
+enum ClassicColors {
+    static let orange = Color(red: 1, green: 0.584, blue: 0)
+    static let green = Color(red: 0.204, green: 0.78, blue: 0.349)
+    static let gray = Color(white: 0.6)
+}
+
+/// Clock app button: colored text on a tinted capsule.
+struct ClassicButtonStyle: ButtonStyle {
+    let color: Color
+    var compact = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: compact ? 11 : 12, weight: .semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, compact ? 8 : 12)
+            .padding(.vertical, compact ? 4 : 7)
+            .background(Capsule().fill(color.opacity(configuration.isPressed ? 0.35 : 0.22)))
+            .scaleEffect(configuration.isPressed ? 0.95 : 1)
+            .contentShape(Capsule())
+            .onChange(of: configuration.isPressed) { _, pressed in if pressed { Haptics.tap() } }
+    }
+}
+
+/// A ruler of minutes under a fixed orange needle: drag it, or swipe with two fingers.
+struct TimerRuler: View {
+    @ObservedObject private var timer = QuickTimer.shared
+    @State private var dragStart: Double?
+    /// Points per minute.
+    static let spacing: CGFloat = 9
+
+    var body: some View {
+        Canvas { context, size in
+            let spacing = Self.spacing
+            let center = size.width / 2
+            let half = Double(center / spacing)
+            let first = max(0, Int((timer.dial - half).rounded(.down)) - 1)
+            let last = min(Int(QuickTimer.dialRange.upperBound), Int((timer.dial + half).rounded(.up)) + 1)
+            guard first <= last else { return }
+            for minute in first...last {
+                let x = center + CGFloat(Double(minute) - timer.dial) * spacing
+                let major = minute % 5 == 0
+                let height: CGFloat = major ? 14 : 7
+                var tick = Path()
+                tick.move(to: CGPoint(x: x, y: 12))
+                tick.addLine(to: CGPoint(x: x, y: 12 + height))
+                context.stroke(tick, with: .color(.white.opacity(major ? 0.75 : 0.3)), lineWidth: major ? 1.5 : 1)
+                if major, minute > 0 {
+                    context.draw(Text("\(minute)").font(.system(size: 9, weight: .semibold)).foregroundColor(.white.opacity(0.5)),
+                                 at: CGPoint(x: x, y: 36))
+                }
+            }
+        }
+        .overlay(alignment: .top) {
+            VStack(spacing: 0) {
+                Image(systemName: "arrowtriangle.down.fill").font(.system(size: 7))
+                Capsule().frame(width: 2.5, height: 20)
+            }
+            .foregroundStyle(ClassicColors.orange)
+            .offset(y: 2)
+        }
+        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.2),
+                                     .init(color: .black, location: 0.8), .init(color: .clear, location: 1)],
+                             startPoint: .leading, endPoint: .trailing))
+        .frame(height: 44)
+        .contentShape(Rectangle())
+        .gesture(DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                if dragStart == nil { dragStart = timer.dial }
+                // Dragging left brings longer times, like pulling the ruler.
+                timer.setDial((dragStart ?? timer.dial) - Double(value.translation.width / Self.spacing))
+            }
+            .onEnded { _ in
+                dragStart = nil
+                timer.settleDial()
+            })
+        .onHover { timer.rulerHovered = $0 }
+        .onDisappear { timer.rulerHovered = false }
+        .help(L("timer.rulerHint"))
     }
 }
 

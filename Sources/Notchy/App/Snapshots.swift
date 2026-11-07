@@ -31,6 +31,10 @@ enum Snapshots {
             model.tab = tab
             save(frame(OpenNotchView(viewModel: model), size: model.openSize), to: folder.appendingPathComponent("tab-\(tab.rawValue).png"))
         }
+        model.tab = .timer
+        QuickTimer.shared.start(minutes: 12)
+        save(frame(OpenNotchView(viewModel: model), size: model.openSize), to: folder.appendingPathComponent("tab-timer-running.png"))
+        QuickTimer.shared.stop()
         // The agenda scrolled down, to check the faded edges and the clipping.
         model.tab = .calendar
         CalendarService.shared.agendaMaxOffset = 90

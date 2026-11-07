@@ -1,5 +1,10 @@
 import SwiftUI
 
+extension Animation {
+    /// Days sliding under the calendar highlight.
+    static let daySlide = Animation.spring(response: 0.38, dampingFraction: 0.82)
+}
+
 /// Week strip on top, the selected day's agenda below. Swipe with two fingers to change day.
 struct CalendarWidget: View {
     @ObservedObject private var service = CalendarService.shared
@@ -12,11 +17,6 @@ struct CalendarWidget: View {
     }
 
     private var selected: Date { service.selectedDay }
-
-    /// A sliding window of days that keeps the selected day in the same slot.
-    private var days: [Date] {
-        (-3...7).compactMap { calendar.date(byAdding: .day, value: $0, to: selected) }
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -49,22 +49,38 @@ struct CalendarWidget: View {
         .onHover { service.isHovered = $0 }
     }
 
+    /// A carousel: the highlight stays in the middle and the days slide under it, smaller and
+    /// fainter towards the edges. Two-finger swipes or a click move it.
     private var dayStrip: some View {
-        HStack(spacing: 4) {
-            ForEach(days, id: \.self) { day in
-                DayCell(day: day, calendar: calendar, selected: calendar.isDate(day, inSameDayAs: selected),
-                        hasEvents: !service.events(on: day).isEmpty)
-                    .onTapGesture { withAnimation(.snappy(duration: 0.25)) { service.selectedDay = day } }
-                    .transition(.opacity)
+        GeometryReader { geo in
+            let cell: CGFloat = 36
+            let center = geo.size.width / 2
+            let reach = Int(center / cell) + 2
+            ZStack {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .fill(Color.white)
+                    .frame(width: 34, height: 42)
+                    .shadow(color: .white.opacity(0.25), radius: 6)
+                    .position(x: center, y: 21)
+                // Identified by date, so the days shared before and after a change slide over.
+                let days = (-reach...reach).compactMap { calendar.date(byAdding: .day, value: $0, to: selected) }
+                ForEach(days, id: \.self) { day in
+                    let offset = calendar.dateComponents([.day], from: selected, to: day).day ?? 0
+                    let distance = abs(Double(offset))
+                    DayCell(day: day, calendar: calendar, selected: offset == 0, hasEvents: !service.events(on: day).isEmpty)
+                        .scaleEffect(offset == 0 ? 1 : max(0.78, 1 - distance * 0.05))
+                        .opacity(max(0.25, 1 - distance * 0.13))
+                        .position(x: center + CGFloat(offset) * cell, y: 21)
+                        .onTapGesture { withAnimation(.daySlide) { service.selectedDay = day } }
+                        .transition(.opacity)
+                }
             }
         }
         .frame(height: 42)
         // The strip is cut at the edge rather than widening the panel when space is short.
-        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+        .frame(minWidth: 0, maxWidth: .infinity)
         .clipped()
-        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.08),
-                                     .init(color: .black, location: 0.85), .init(color: .clear, location: 1)],
-                             startPoint: .leading, endPoint: .trailing))
+        .animation(.daySlide, value: selected)
     }
 
     @ViewBuilder private var agenda: some View {
@@ -105,7 +121,6 @@ private struct DayCell: View {
                 .frame(width: 3, height: 3)
         }
         .frame(width: 32, height: 40)
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(selected ? Color.white : Color.clear))
         .contentShape(Rectangle())
     }
 }

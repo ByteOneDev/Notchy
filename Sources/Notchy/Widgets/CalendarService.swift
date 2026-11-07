@@ -63,7 +63,7 @@ final class CalendarService: ObservableObject {
 
     func moveSelection(by days: Int) {
         guard let day = Calendar.current.date(byAdding: .day, value: days, to: selectedDay) else { return }
-        withAnimation(.snappy(duration: 0.25)) { selectedDay = day }
+        withAnimation(.daySlide) { selectedDay = day }
         // Swiping far from the loaded range: load events around the new day.
         if abs(day.timeIntervalSince(loadedCenter)) > 10 * 86_400 { reload() }
     }

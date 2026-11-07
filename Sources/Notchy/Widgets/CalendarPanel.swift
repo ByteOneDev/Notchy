@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Full calendar panel: agenda of the next days on the left, month grid on the right.
+/// Full calendar panel: the selected day's agenda on the left, month grid on the right.
 struct CalendarPanel: View {
     @ObservedObject private var service = CalendarService.shared
     @ObservedObject private var settings = AppSettings.shared
@@ -51,36 +51,19 @@ struct CalendarPanel: View {
                     .buttonStyle(PillButtonStyle())
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                let sections = upcomingSections()
-                if sections.isEmpty {
-                    Label(L("calendar.emptySoon"), systemImage: "calendar.badge.checkmark")
+                let events = service.events(on: service.selectedDay)
+                if events.isEmpty {
+                    Label(L("calendar.empty"), systemImage: "calendar.badge.checkmark")
                         .font(.system(size: 12)).foregroundStyle(.white.opacity(0.5))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     AgendaScroller {
                         VStack(alignment: .leading, spacing: 5) {
-                            ForEach(sections, id: \.day) { section in
-                                if !calendar.isDate(section.day, inSameDayAs: service.selectedDay) {
-                                    Text(section.day.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(settings.language.locale)).uppercased())
-                                        .font(.system(size: 10, weight: .semibold))
-                                        .foregroundStyle(.white.opacity(0.4))
-                                        .padding(.top, 2)
-                                }
-                                ForEach(section.events) { EventCard(event: $0, locale: settings.language.locale) }
-                            }
+                            ForEach(events) { EventCard(event: $0, locale: settings.language.locale) }
                         }
                     }
                 }
             }
-        }
-    }
-
-    /// The selected day and the following days that have events, up to a week ahead.
-    private func upcomingSections() -> [(day: Date, events: [CalendarService.Event])] {
-        (0..<8).compactMap { offset in
-            guard let day = calendar.date(byAdding: .day, value: offset, to: service.selectedDay) else { return nil }
-            let events = service.events(on: day)
-            return events.isEmpty ? nil : (day, events)
         }
     }
 }

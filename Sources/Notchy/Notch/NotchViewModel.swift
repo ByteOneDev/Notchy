@@ -42,6 +42,12 @@ extension NSScreen {
 
     var isBuiltIn: Bool { CGDisplayIsBuiltin(displayID) != 0 }
 
+    /// The identifier the window server uses for this display's Spaces.
+    var uuidString: String? {
+        guard let uuid = CGDisplayCreateUUIDFromDisplayID(displayID)?.takeRetainedValue() else { return nil }
+        return CFUUIDCreateString(nil, uuid) as String?
+    }
+
     /// Size of the hardware notch, nil on screens without one.
     var hardwareNotchSize: CGSize? {
         guard safeAreaInsets.top > 0,
@@ -148,20 +154,23 @@ final class NotchViewModel: ObservableObject {
     private var scrollX: CGFloat = 0
     private var scrollY: CGFloat = 0
     private var gestureConsumed = false
-    /// The current gesture scrolls the calendar agenda (decided on its first move).
-    private var scrollingAgenda: Bool?
+    /// What the current gesture moves, decided on its first move: the notch itself, the
+    /// calendar agenda or the timer ruler.
+    private enum ScrollTarget { case notch, agenda, dial }
+    private var scrollTarget: ScrollTarget?
 
     func handleScroll(_ event: NSEvent) {
         guard !hiddenForFullscreen else { return }
         if event.phase == .began || (event.phase.isEmpty && event.momentumPhase.isEmpty && !gestureConsumed && scrollX == 0 && scrollY == 0) {
             scrollX = 0; scrollY = 0; gestureConsumed = false
         }
-        if event.phase == .began || event.phase == .mayBegin { scrollingAgenda = nil }
+        if event.phase == .began || event.phase == .mayBegin { scrollTarget = nil }
         if event.phase == .ended || event.phase == .cancelled {
             scrollX = 0; scrollY = 0; gestureConsumed = false
+            if scrollTarget == .dial { QuickTimer.shared.settleDial() }
             return
         }
-        if scrollAgenda(with: event) { return }
+        if scrollContent(with: event) { return }
         guard event.momentumPhase.isEmpty, !gestureConsumed else { return }
         let natural = event.isDirectionInvertedFromDevice
         // Deltas in the direction the fingers move.
@@ -198,20 +207,37 @@ final class NotchViewModel: ObservableObject {
     }
 
     /// Over a calendar agenda longer than its space, a vertical scroll moves the list (with
-    /// its momentum) instead of closing the notch. Horizontal swipes still change the day.
-    private func scrollAgenda(with event: NSEvent) -> Bool {
-        let calendar = CalendarService.shared
+    /// its momentum) instead of closing the notch; horizontal swipes still change the day.
+    /// Over the timer ruler, a horizontal swipe turns it.
+    private func scrollContent(with event: NSEvent) -> Bool {
         let isWheel = event.phase.isEmpty && event.momentumPhase.isEmpty
-        if scrollingAgenda == nil || isWheel {
+        if scrollTarget == nil || isWheel {
             guard event.scrollingDeltaX != 0 || event.scrollingDeltaY != 0 else { return false }
-            scrollingAgenda = isOpen && (tab == .home || tab == .calendar) && calendar.agendaHovered
-                && calendar.agendaMaxOffset > 0 && abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX)
+            let vertical = abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX)
+            let calendar = CalendarService.shared
+            let timer = QuickTimer.shared
+            if isOpen, tab == .home || tab == .calendar, vertical, calendar.agendaHovered, calendar.agendaMaxOffset > 0 {
+                scrollTarget = .agenda
+            } else if isOpen, tab == .timer, !vertical, timer.rulerHovered, !timer.isActive {
+                scrollTarget = .dial
+            } else {
+                scrollTarget = .notch
+            }
         }
-        guard scrollingAgenda == true else { return false }
         // A mouse wheel counts in lines, a trackpad in points.
-        let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 12
-        calendar.scrollAgenda(by: -delta)
-        if event.momentumPhase == .ended { scrollingAgenda = nil }
+        let scale: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 12
+        switch scrollTarget {
+        case .agenda:
+            CalendarService.shared.scrollAgenda(by: -event.scrollingDeltaY * scale)
+        case .dial:
+            // Fingers moving left bring longer times, like pulling the ruler.
+            let fingers = event.scrollingDeltaX * (event.isDirectionInvertedFromDevice ? 1 : -1) * scale
+            QuickTimer.shared.turnDial(by: -Double(fingers / TimerRuler.spacing))
+            if isWheel || event.momentumPhase == .ended { QuickTimer.shared.settleDial() }
+        case .notch, nil:
+            return false
+        }
+        if event.momentumPhase == .ended { scrollTarget = nil }
         return true
     }
 

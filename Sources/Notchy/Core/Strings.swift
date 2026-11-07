@@ -188,7 +188,6 @@ enum Strings {
 
         // Calendar panel & meeting prep
         "calendar.week": ("S%d", "W%d"),
-        "calendar.emptySoon": ("Rien de prévu cette semaine", "Nothing planned this week"),
         "prep.title": ("Prêt pour la réunion ?", "Ready for the call?"),
         "prep.startsIn": ("Commence dans %@", "Starts in %@"),
         "prep.dismiss": ("Fermer", "Dismiss"),
@@ -476,5 +475,12 @@ enum Strings {
         "modes.startShortcut": ("Raccourci au début", "Shortcut at start"),
         "modes.endShortcut": ("Raccourci à la fin", "Shortcut at end"),
         "modes.noShortcut": ("Aucun", "None"),
+
+        // Timer
+        "timer.start": ("Démarrer", "Start"),
+        "timer.pause": ("Pause", "Pause"),
+        "timer.resume": ("Reprendre", "Resume"),
+        "timer.endsAt": ("Fin à %@", "Ends at %@"),
+        "timer.rulerHint": ("Fais glisser la règle, ou glisse à deux doigts", "Drag the ruler, or swipe with two fingers"),
     ]
 }

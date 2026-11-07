@@ -95,7 +95,7 @@ final class NotchManager {
 
     private func updateFullscreen() {
         let enabled = AppSettings.shared.hideInFullscreen
-        let fullscreenDisplays = enabled ? Self.displaysWithFullscreenWindow() : []
+        let fullscreenDisplays = enabled ? Self.fullscreenSpaceDisplays().union(Self.displaysWithFullscreenWindow()) : []
         for (id, controller) in controllers {
             let hidden = fullscreenDisplays.contains(id)
             if controller.viewModel.hiddenForFullscreen != hidden {
@@ -103,6 +103,34 @@ final class NotchManager {
                 if hidden { controller.viewModel.close() }
             }
         }
+    }
+
+    private typealias ConnectionFn = @convention(c) () -> Int32
+    private typealias ManagedSpacesFn = @convention(c) (Int32) -> Unmanaged<CFArray>?
+
+    private static let managedSpaces: (connection: ConnectionFn, copy: ManagedSpacesFn)? = {
+        guard let handle = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_NOW),
+              let connection = dlsym(handle, "SLSMainConnectionID"),
+              let copy = dlsym(handle, "SLSCopyManagedDisplaySpaces") else { return nil }
+        return (unsafeBitCast(connection, to: ConnectionFn.self), unsafeBitCast(copy, to: ManagedSpacesFn.self))
+    }()
+
+    /// Displays showing a full-screen app's Space (green button), whichever app is in front.
+    /// Read from the window server (SkyLight, private): Space type 4 is a full-screen Space.
+    private static func fullscreenSpaceDisplays() -> Set<CGDirectDisplayID> {
+        guard let api = managedSpaces,
+              let displays = api.copy(api.connection())?.takeRetainedValue() as? [[String: Any]] else { return [] }
+        var result = Set<CGDirectDisplayID>()
+        for display in displays {
+            guard let current = display["Current Space"] as? [String: Any], current["type"] as? Int == 4 else { continue }
+            let identifier = display["Display Identifier"] as? String
+            for screen in NSScreen.screens {
+                // "Main" when all displays share their Spaces.
+                guard identifier == "Main" || identifier == screen.uuidString else { continue }
+                result.insert(screen.displayID)
+            }
+        }
+        return result
     }
 
     /// The menu bar is a Window Server window at the main menu level along the top of the display.
