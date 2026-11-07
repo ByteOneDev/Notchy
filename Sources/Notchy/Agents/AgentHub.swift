@@ -253,7 +253,13 @@ final class AgentHub: ObservableObject {
         }
         let (fiveHour, fiveReset) = read("five_hour")
         let (sevenDay, sevenReset) = read("seven_day")
-        usage = AgentUsage(fiveHour: fiveHour, fiveHourReset: fiveReset, sevenDay: sevenDay, sevenDayReset: sevenReset, updatedAt: .now)
+        setUsage(AgentUsage(fiveHour: fiveHour, fiveHourReset: fiveReset, sevenDay: sevenDay, sevenDayReset: sevenReset, updatedAt: .now))
+    }
+
+    /// From the status line or from the account (`AccountUsage`).
+    func setUsage(_ usage: AgentUsage) {
+        self.usage = usage
+        let (fiveHour, fiveReset, sevenDay, sevenReset) = (usage.fiveHour, usage.fiveHourReset, usage.sevenDay, usage.sevenDayReset)
         // Kept across restarts (updates relaunch Notchy): Claude Code only reports it while it runs.
         if let data = try? JSONEncoder().encode(usage) { UserDefaults.standard.set(data, forKey: "agentUsage") }
         warnIfNeeded(fiveHour, reset: fiveReset, window: L("usage.session"))

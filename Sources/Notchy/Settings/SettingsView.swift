@@ -377,6 +377,7 @@ private struct AgentsPane: View {
                 Stepper(L("settings.agents.threshold", settings.usageAlertThreshold), value: $settings.usageAlertThreshold, in: 50...95, step: 5)
             }
         }
+        AccountUsageSection()
         Section {
             integrationRow(name: "Claude Code", icon: AgentKind.claude.symbol, color: AgentKind.claude.color,
                            installed: claudeState != .notInstalled,
@@ -600,6 +601,40 @@ private struct AboutPane: View {
         }
         Section {
             Link("GitHub — ByteOneDev/Notchy", destination: URL(string: "https://github.com/ByteOneDev/Notchy")!)
+        }
+    }
+}
+
+/// Limits read from the Claude account, with what to do when it can't.
+private struct AccountUsageSection: View {
+    @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var account = AccountUsage.shared
+
+    var body: some View {
+        Section {
+            Toggle(L("settings.agents.account"), isOn: $settings.usageFromAccount)
+                .onChange(of: settings.usageFromAccount) { if settings.usageFromAccount { account.retry() } }
+            if settings.usageFromAccount {
+                LabeledContent(L("settings.agents.account.state")) {
+                    HStack(spacing: 8) {
+                        Text(L("usage.account.\(stateKey)")).foregroundStyle(account.state == .ok ? .green : .secondary)
+                        Button(L("settings.agents.account.retry")) { account.retry() }
+                    }
+                }
+            }
+        } footer: {
+            Text(L("settings.agents.account.footer")).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private var stateKey: String {
+        switch account.state {
+        case .idle: "idle"
+        case .ok: "ok"
+        case .notLoggedIn: "notLoggedIn"
+        case .expired: "expired"
+        case .denied: "denied"
+        case .failed: "failed"
         }
     }
 }

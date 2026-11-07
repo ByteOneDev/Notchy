@@ -528,5 +528,18 @@ enum Strings {
         "home.widget.modes": ("Modes", "Modes"),
         "modes.trigger.manual": ("À la main, depuis le widget", "By hand, from the widget"),
         "modes.widget.blocking": ("Actif · %d sites bloqués", "On · %d sites blocked"),
+
+        // Limits from the Claude account
+        "settings.agents.account": ("Lire les limites depuis mon compte Claude", "Read limits from my Claude account"),
+        "settings.agents.account.state": ("État", "Status"),
+        "settings.agents.account.retry": ("Réessayer", "Retry"),
+        "settings.agents.account.footer": ("Notchy utilise la connexion de Claude Code en ligne de commande (dans le trousseau) pour demander tes limites à Anthropic toutes les 5 minutes, même quand Claude Code ne tourne pas. Il ne la renouvelle jamais et ne la modifie pas. macOS te demande une fois d'autoriser l'accès : choisis « Toujours autoriser ».",
+                                           "Notchy uses Claude Code's command-line login (in the keychain) to ask Anthropic for your limits every 5 minutes, even when Claude Code isn't running. It never renews or changes it. macOS asks once to allow access: pick “Always Allow”."),
+        "usage.account.idle": ("En attente", "Waiting"),
+        "usage.account.ok": ("Connecté", "Connected"),
+        "usage.account.notLoggedIn": ("Pas de connexion : lance claude dans le Terminal, puis /login.", "Not signed in: run claude in the Terminal, then /login."),
+        "usage.account.expired": ("Connexion expirée : utilise Claude Code dans le Terminal pour la renouveler.", "Login expired: use Claude Code in the Terminal to renew it."),
+        "usage.account.denied": ("Accès au trousseau refusé", "Keychain access refused"),
+        "usage.account.failed": ("Anthropic n'a pas répondu", "Anthropic didn't answer"),
     ]
 }

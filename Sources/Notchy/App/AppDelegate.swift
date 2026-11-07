@@ -32,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         DisplayMonitor.shared.start()
         FocusMonitor.shared.start()
         AgentHub.shared.start()
+        AccountUsage.shared.start()
         TasksService.shared.start()
         DownloadMonitor.shared.start()
         KeyboardBacklightMonitor.shared.start()

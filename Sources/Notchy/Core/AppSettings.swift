@@ -124,6 +124,7 @@ final class AppSettings: ObservableObject {
     @Published var agentActivity: Bool { didSet { save(agentActivity, "agentActivity") } }
     @Published var usageAlert: Bool { didSet { save(usageAlert, "usageAlert") } }
     @Published var usageAlertThreshold: Int { didSet { save(usageAlertThreshold, "usageAlertThreshold") } }
+    @Published var usageFromAccount: Bool { didSet { save(usageFromAccount, "usageFromAccount") } }
 
     // Notch size, sounds, privacy
     @Published var openWidth: Double { didSet { save(openWidth, "openWidth") } }
@@ -230,6 +231,7 @@ final class AppSettings: ObservableObject {
         agentActivity = value("agentActivity", true)
         usageAlert = value("usageAlert", true)
         usageAlertThreshold = value("usageAlertThreshold", 80)
+        usageFromAccount = value("usageFromAccount", true)
         openWidth = value("openWidth", Self.defaultOpenWidth)
         openHeight = value("openHeight", Self.defaultOpenHeight)
         adaptiveSize = value("adaptiveSize", true)
