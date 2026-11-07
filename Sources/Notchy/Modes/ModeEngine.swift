@@ -15,6 +15,8 @@ struct ModeRule: Codable, Identifiable, Equatable {
         case app
         /// An external display is connected.
         case externalDisplay
+        /// Only from the Modes widget.
+        case manual
 
         var id: String { rawValue }
         var title: String { L("modes.trigger.\(rawValue)") }
@@ -39,8 +41,17 @@ struct ModeRule: Codable, Identifiable, Equatable {
     /// Shortcut run when the mode starts, e.g. one that turns a macOS Focus on.
     var startShortcut = ""
     var endShortcut = ""
-    /// Sites kept closed in the browsers while the mode is active ("youtube.com").
+    /// Sites kept closed in the browsers while the mode is active ("youtube.com",
+    /// "youtube.com/shorts"), and whole categories of sites (`SiteCatalog`).
     var blockedSites: [String] = []
+    var blockedCategories: [String] = []
+
+    /// Every site the mode blocks, its categories' included.
+    var allBlockedSites: [String] {
+        var seen = Set<String>()
+        return (blockedSites + blockedCategories.flatMap { SiteCatalog.category($0)?.domains ?? [] })
+            .filter { seen.insert($0).inserted }
+    }
 
     static var defaults: [ModeRule] {
         [
@@ -73,6 +84,7 @@ extension ModeRule {
         startShortcut = try c.decodeIfPresent(String.self, forKey: .startShortcut) ?? base.startShortcut
         endShortcut = try c.decodeIfPresent(String.self, forKey: .endShortcut) ?? base.endShortcut
         blockedSites = try c.decodeIfPresent([String].self, forKey: .blockedSites) ?? base.blockedSites
+        blockedCategories = try c.decodeIfPresent([String].self, forKey: .blockedCategories) ?? base.blockedCategories
     }
 }
 
@@ -82,6 +94,10 @@ final class ModeEngine: ObservableObject {
     static let shared = ModeEngine()
 
     @Published private(set) var active: Set<UUID> = []
+    /// Modes switched on from the widget, kept until switched off (and across restarts).
+    @Published private(set) var manualOn: Set<UUID> = Set((UserDefaults.standard.stringArray(forKey: "modesManualOn") ?? []).compactMap(UUID.init))
+    /// Modes switched off from the widget while their trigger is true; forgotten once it isn't.
+    private var manualOff: Set<UUID> = []
     /// Modes that paused the music, to resume it when the last one ends.
     private var pausedMusic: Set<UUID> = []
     private var cancellables = Set<AnyCancellable>()
@@ -115,7 +131,9 @@ final class ModeEngine: ObservableObject {
     func evaluate() {
         let settings = AppSettings.shared
         let rules = settings.modesEnabled ? settings.modes.filter(\.enabled) : []
-        let now = Set(rules.filter(isTriggered).map(\.id))
+        let triggered = Set(rules.filter(isTriggered).map(\.id))
+        manualOff.formIntersection(triggered)
+        let now = triggered.subtracting(manualOff).union(manualOn.intersection(rules.map(\.id)))
         guard now != active else { return }
         for id in active.subtracting(now) {
             end(settings.modes.first { $0.id == id }, id: id)
@@ -152,7 +170,23 @@ final class ModeEngine: ObservableObject {
             return !rule.appBundleID.isEmpty && NSWorkspace.shared.frontmostApplication?.bundleIdentifier == rule.appBundleID
         case .externalDisplay:
             return NSScreen.screens.contains { !$0.isBuiltIn }
+        case .manual:
+            return false
         }
+    }
+
+    /// From the widget: on if it is off, off if it is on, whatever its trigger says.
+    func toggle(_ rule: ModeRule) {
+        Haptics.tap()
+        if active.contains(rule.id) {
+            manualOn.remove(rule.id)
+            if isTriggered(rule) { manualOff.insert(rule.id) }
+        } else {
+            manualOff.remove(rule.id)
+            if !isTriggered(rule) { manualOn.insert(rule.id) }
+        }
+        UserDefaults.standard.set(manualOn.map(\.uuidString), forKey: "modesManualOn")
+        evaluate()
     }
 
     private func begin(_ rule: ModeRule) {

@@ -20,11 +20,12 @@ enum Snapshots {
 
     private static let homeLayouts: [[HomeWidget]] = [
         [.media, .calendar], [.media], [.weather], [.media, .weather, .calendar], [.media, .tasks, .network],
-        [.rain, .shortcuts, .weather], [.weather, .rain], [.tasks, .shortcuts], [.calendar, .network],
+        [.rain, .shortcuts, .weather], [.weather, .rain], [.tasks, .shortcuts], [.calendar, .network], [.media, .modes, .calendar],
     ]
 
     private static func render(to folder: URL) {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        checkLogic(to: folder.appendingPathComponent("logic.txt"))
         guard let screen = NSScreen.screens.first(where: \.isBuiltIn) ?? NSScreen.main else { return }
         let model = NotchViewModel(screen: screen)
         for tab in NotchTab.allCases where tab != .mirror {
@@ -63,6 +64,19 @@ enum Snapshots {
             let view = OpenNotchView(viewModel: model, homeOverride: layout)
             save(frame(view, size: model.openSize), to: folder.appendingPathComponent("home-\(name).png"))
         }
+    }
+
+    /// Site completion, parsing and matching, written out to be read.
+    private static func checkLogic(to url: URL) {
+        var lines: [String] = []
+        for query in ["you", "twi", "tube", "insta", "net", "lequ", "steam"] {
+            lines.append("suggest \(query) → \(SiteCatalog.suggestions(for: query).joined(separator: ", "))")
+        }
+        lines.append("parse → \(SiteBlocker.parse("https://www.YouTube.com/shorts/?x=1, x.com ; reddit.com/r/politics/").joined(separator: " | "))")
+        let rule = ModeRule(name: "T", icon: "moon.fill", trigger: .manual, blockedSites: ["youtube.com/shorts", "x.com"],
+                            blockedCategories: ["gambling"])
+        lines.append("all sites (\(rule.allBlockedSites.count)): \(rule.allBlockedSites.prefix(5).joined(separator: ", "))…")
+        try? lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
     }
 
     private static func glowScene(notch: CGSize) -> some View {

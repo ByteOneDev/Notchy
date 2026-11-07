@@ -61,11 +61,22 @@ struct PermissionPrompt: Identifiable {
     let respond: @MainActor (Bool?) -> Void
 }
 
-struct AgentUsage: Equatable {
+struct AgentUsage: Equatable, Codable {
     var fiveHour: Double?
     var fiveHourReset: Date?
     var sevenDay: Double?
     var sevenDayReset: Date?
+    /// When Claude Code last reported it.
+    var updatedAt: Date?
+
+    var isEmpty: Bool { fiveHour == nil && sevenDay == nil }
+
+    /// A window whose reset time has passed starts again from zero.
+    func current(_ percent: Double?, reset: Date?) -> Double? {
+        guard let percent else { return nil }
+        if let reset, reset < .now { return 0 }
+        return percent
+    }
 }
 
 /// Everything the coding agents report: sessions, steps, permission prompts and usage.
@@ -90,6 +101,10 @@ final class AgentHub: ObservableObject {
     var isAnyWorking: Bool { sessions.contains { $0.isWorking } }
 
     func start() {
+        if let data = UserDefaults.standard.data(forKey: "agentUsage"),
+           let saved = try? JSONDecoder().decode(AgentUsage.self, from: data) {
+            usage = saved
+        }
         server.handler = { [weak self] request, respond in
             self?.handle(request, respond: respond) ?? respond(.init(status: 503))
         }
@@ -238,7 +253,9 @@ final class AgentHub: ObservableObject {
         }
         let (fiveHour, fiveReset) = read("five_hour")
         let (sevenDay, sevenReset) = read("seven_day")
-        usage = AgentUsage(fiveHour: fiveHour, fiveHourReset: fiveReset, sevenDay: sevenDay, sevenDayReset: sevenReset)
+        usage = AgentUsage(fiveHour: fiveHour, fiveHourReset: fiveReset, sevenDay: sevenDay, sevenDayReset: sevenReset, updatedAt: .now)
+        // Kept across restarts (updates relaunch Notchy): Claude Code only reports it while it runs.
+        if let data = try? JSONEncoder().encode(usage) { UserDefaults.standard.set(data, forKey: "agentUsage") }
         warnIfNeeded(fiveHour, reset: fiveReset, window: L("usage.session"))
         warnIfNeeded(sevenDay, reset: sevenReset, window: L("usage.week"))
     }

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Widgets the home panel can show, in the order chosen in the settings.
 enum HomeWidget: String, CaseIterable, Identifiable {
-    case media, calendar, weather, rain, tasks, shortcuts, network
+    case media, calendar, weather, rain, tasks, shortcuts, modes, network
     var id: String { rawValue }
 
     /// The home panel is one row: beyond three widgets it gets cramped.
@@ -16,6 +16,7 @@ enum HomeWidget: String, CaseIterable, Identifiable {
         case .rain: "cloud.rain.fill"
         case .tasks: "checklist"
         case .shortcuts: "square.grid.2x2.fill"
+        case .modes: "moon.stars.fill"
         case .network: "network"
         }
     }
@@ -27,6 +28,7 @@ enum HomeWidget: String, CaseIterable, Identifiable {
         case .weather, .rain: .cyan
         case .tasks: .orange
         case .shortcuts: .indigo
+        case .modes: .purple
         case .network: .blue
         }
     }
@@ -40,6 +42,7 @@ enum HomeWidget: String, CaseIterable, Identifiable {
         case .media: settings.mediaEnabled
         case .calendar: settings.calendarEnabled
         case .weather, .rain: settings.weatherEnabled
+        case .modes: settings.modesEnabled
         case .tasks, .shortcuts, .network: true
         }
     }
@@ -91,6 +94,7 @@ struct HomeView: View {
         case .rain: RainWidget()
         case .tasks: TasksWidget()
         case .shortcuts: ShortcutsWidget()
+        case .modes: ModesWidget()
         case .network: NetworkWidget()
         }
     }

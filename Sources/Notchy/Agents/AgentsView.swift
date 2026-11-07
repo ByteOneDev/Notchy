@@ -193,8 +193,15 @@ struct UsageMeters: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            meter(L("usage.session"), usage.fiveHour, usage.fiveHourReset)
-            meter(L("usage.week"), usage.sevenDay, usage.sevenDayReset)
+            meter(L("usage.session"), usage.current(usage.fiveHour, reset: usage.fiveHourReset), usage.fiveHourReset)
+            meter(L("usage.week"), usage.current(usage.sevenDay, reset: usage.sevenDayReset), usage.sevenDayReset)
+            if usage.isEmpty {
+                Text(L("usage.noData")).font(.system(size: 9)).foregroundStyle(.white.opacity(0.35))
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if let updated = usage.updatedAt, updated.timeIntervalSinceNow < -15 * 60 {
+                Text(L("usage.updated", updated.formatted(.relative(presentation: .named).locale(Loc.locale))))
+                    .font(.system(size: 9)).foregroundStyle(.white.opacity(0.35))
+            }
         }
     }
 
@@ -217,7 +224,7 @@ struct UsageMeters: View {
                 }
             }
             .frame(height: 4)
-            if let reset, percent != nil {
+            if let reset, percent != nil, reset > .now {
                 Text(L("usage.resets", reset.formatted(.relative(presentation: .named).locale(Loc.locale))))
                     .font(.system(size: 9)).foregroundStyle(.white.opacity(0.35))
             }

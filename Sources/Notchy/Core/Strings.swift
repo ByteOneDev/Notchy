@@ -499,11 +499,34 @@ enum Strings {
 
         // Site blocking
         "modes.blockedSites": ("Sites bloqués", "Blocked sites"),
-        "modes.blockedSites.hint": ("Pendant ce mode, ces sites sont fermés dans Safari, Chrome, Brave, Arc, Edge, Vivaldi et Opera (pas Firefox), et rouverts à la fin. macOS demande une fois l'autorisation de piloter chaque navigateur.",
-                                    "While this mode is on, these sites are closed in Safari, Chrome, Brave, Arc, Edge, Vivaldi and Opera (not Firefox), and reopened at the end. macOS asks once for permission to control each browser."),
+        "modes.blockedSites.hint": ("Pendant ce mode, ces sites sont fermés dans Safari, Chrome, Brave, Arc, Edge, Vivaldi et Opera (pas Firefox), et rouverts à la fin. Pour ne bloquer qu'une partie d'un site, écris son chemin : youtube.com/shorts. macOS demande une fois l'autorisation de piloter chaque navigateur.",
+                                    "While this mode is on, these sites are closed in Safari, Chrome, Brave, Arc, Edge, Vivaldi and Opera (not Firefox), and reopened at the end. To block only part of a site, write its path: youtube.com/shorts. macOS asks once for permission to control each browser."),
+        "modes.blocking": ("Bloquer pendant ce mode", "Block during this mode"),
+        "modes.addSite": ("Ajouter un site", "Add a site"),
+        "modes.addSite.prompt": ("Tape le début : you → youtube.com", "Type the start: you → youtube.com"),
+        "sites.category.social": ("Réseaux sociaux", "Social media"),
+        "sites.category.video": ("Vidéo et streaming", "Video and streaming"),
+        "sites.category.news": ("Actualités", "News"),
+        "sites.category.sports": ("Sport", "Sports"),
+        "sites.category.shopping": ("Shopping", "Shopping"),
+        "sites.category.games": ("Jeux", "Games"),
+        "sites.category.gambling": ("Paris et jeux d'argent", "Gambling"),
+        "sites.category.dating": ("Rencontres", "Dating"),
+        "sites.category.messaging": ("Messageries", "Messaging"),
+        "sites.category.adult": ("Contenu adulte", "Adult content"),
         "blocker.title": ("%@ est bloqué", "%@ is blocked"),
         "blocker.subtitle": ("Le mode « %@ » est actif. La page reviendra toute seule quand il sera terminé.",
                              "The “%@” mode is on. This page will come back by itself when it ends."),
         "blocker.ended": ("Ce site n'est plus bloqué.", "This site is no longer blocked."),
+
+        // Usage freshness
+        "usage.noData": ("Les limites arrivent quand Claude Code tourne dans le Terminal (sa ligne d'état les envoie).",
+                         "Limits show up when Claude Code runs in the Terminal (its status line sends them)."),
+        "usage.updated": ("Mis à jour %@", "Updated %@"),
+
+        // Modes widget
+        "home.widget.modes": ("Modes", "Modes"),
+        "modes.trigger.manual": ("À la main, depuis le widget", "By hand, from the widget"),
+        "modes.widget.blocking": ("Actif · %d sites bloqués", "On · %d sites blocked"),
     ]
 }

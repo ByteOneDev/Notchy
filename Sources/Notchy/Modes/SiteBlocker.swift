@@ -30,7 +30,7 @@ final class SiteBlocker {
     private func update() {
         var blocked: [String: String] = [:]
         for mode in ModeEngine.shared.activeModes {
-            for site in mode.blockedSites where blocked[site] == nil { blocked[site] = mode.name }
+            for site in mode.allBlockedSites where blocked[site] == nil { blocked[site] = mode.name }
         }
         self.blocked = blocked
         if blocked.isEmpty {
@@ -44,10 +44,18 @@ final class SiteBlocker {
         }
     }
 
-    /// The domain a host belongs to among the blocked ones ("m.youtube.com" → "youtube.com").
-    func blockedDomain(for host: String) -> String? {
-        let host = host.lowercased()
-        return blocked.keys.first { host == $0 || host.hasSuffix("." + $0) }
+    /// The blocked entry a page falls under: "m.youtube.com/watch" → "youtube.com", and
+    /// "youtube.com/shorts/abc" → "youtube.com/shorts" when only that part is blocked.
+    func blockedEntry(for url: URL) -> String? {
+        guard let host = url.host()?.lowercased() else { return nil }
+        let path = url.path.lowercased()
+        return blocked.keys.first { entry in
+            let parts = entry.split(separator: "/", maxSplits: 1)
+            let domain = String(parts[0])
+            guard host == domain || host.hasSuffix("." + domain) else { return false }
+            guard parts.count == 2 else { return true }
+            return path.hasPrefix("/" + parts[1])
+        }
     }
 
     private func check() {
@@ -86,8 +94,8 @@ final class SiteBlocker {
         var redirects: [String] = []
         for line in output.split(separator: "\n") {
             let parts = line.split(separator: "\t", maxSplits: 2).map(String.init)
-            guard parts.count == 3, let url = URL(string: parts[2]), let host = url.host(),
-                  let domain = blockedDomain(for: host), let page = Self.pageURL(site: domain, from: url) else { continue }
+            guard parts.count == 3, let url = URL(string: parts[2]), url.host() != "127.0.0.1",
+                  let entry = blockedEntry(for: url), let page = Self.pageURL(site: entry, from: url) else { continue }
             redirects.append("set URL of tab \(parts[1]) of window \(parts[0]) to \"\(page)\"")
         }
         guard !redirects.isEmpty else { return }
@@ -165,15 +173,17 @@ final class SiteBlocker {
     </script></body></html>
     """
 
-    /// "https://www.YouTube.com/watch?v=…, x.com" → ["youtube.com", "x.com"]
+    /// "https://www.YouTube.com/shorts/?x, x.com" → ["youtube.com/shorts", "x.com"]: the
+    /// domain, and a path when only part of the site should be blocked.
     static func parse(_ text: String) -> [String] {
         var result: [String] = []
         for token in text.components(separatedBy: CharacterSet(charactersIn: ", \n\t;")) {
             var site = token.trimmingCharacters(in: .whitespaces).lowercased()
             if let range = site.range(of: "://") { site = String(site[range.upperBound...]) }
-            site = String(site.prefix { $0 != "/" && $0 != "?" && $0 != "#" })
+            site = String(site.prefix { $0 != "?" && $0 != "#" })
+            while site.hasSuffix("/") { site.removeLast() }
             if site.hasPrefix("www.") { site = String(site.dropFirst(4)) }
-            guard site.contains("."), !result.contains(site) else { continue }
+            guard let domain = site.split(separator: "/").first, domain.contains("."), !result.contains(site) else { continue }
             result.append(site)
         }
         return result
