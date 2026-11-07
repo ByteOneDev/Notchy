@@ -20,9 +20,18 @@ enum DisplayTarget: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// How the light around the notch is drawn while audio plays.
+enum GlowStyle: String, CaseIterable, Identifiable {
+    /// A soft backlight: the notch hides the light source and only the halo spills onto the screen.
+    case diffuse
+    /// A glowing line along the notch's edge.
+    case line
+    var id: String { rawValue }
+}
+
 /// How the home calendar picks its day.
 enum DayPickerStyle: String, CaseIterable, Identifiable {
-    case notchNook, carousel, bigDate
+    case notchNook, carousel, ruler, bigDate
     var id: String { rawValue }
     var title: String { L("settings.dayPicker.\(rawValue)") }
 }
@@ -58,6 +67,7 @@ final class AppSettings: ObservableObject {
     @Published var swipeToChangeTrack: Bool { didSet { save(swipeToChangeTrack, "swipeToChangeTrack") } }
     @Published var allAudioSources: Bool { didSet { save(allAudioSources, "allAudioSources") } }
     @Published var audioGlow: Bool { didSet { save(audioGlow, "audioGlow") } }
+    @Published var glowStyle: GlowStyle { didSet { save(glowStyle.rawValue, "glowStyle") } }
     @Published var glowWidth: Double { didSet { save(glowWidth, "glowWidth") } }
     @Published var glowBlur: Double { didSet { save(glowBlur, "glowBlur") } }
     @Published var glowIntensity: Double { didSet { save(glowIntensity, "glowIntensity") } }
@@ -171,6 +181,7 @@ final class AppSettings: ObservableObject {
         swipeToChangeTrack = value("swipeToChangeTrack", true)
         allAudioSources = value("allAudioSources", true)
         audioGlow = value("audioGlow", true)
+        glowStyle = GlowStyle(rawValue: value("glowStyle", "diffuse")) ?? .diffuse
         glowWidth = value("glowWidth", Self.GlowDefaults.width)
         glowBlur = value("glowBlur", Self.GlowDefaults.blur)
         glowIntensity = value("glowIntensity", Self.GlowDefaults.intensity)
@@ -236,6 +247,11 @@ final class AppSettings: ObservableObject {
         teleprompterShortcut = Self.loadShortcut("teleprompterShortcut") ?? nil
         isLoaded = true
         Loc.language = language
+        // 0.7.2 moved the glow to a diffuse backlight: start everyone from its settings once.
+        if !d.bool(forKey: "glowDiffuseMigrated") {
+            d.set(true, forKey: "glowDiffuseMigrated")
+            resetGlow()
+        }
     }
 
     private func save(_ value: Any, _ key: String) {
@@ -302,14 +318,15 @@ final class AppSettings: ObservableObject {
 
 extension AppSettings {
     enum GlowDefaults {
-        static let width: Double = 3
-        static let blur: Double = 12
+        static let width: Double = 7
+        static let blur: Double = 30
         static let intensity: Double = 1
-        static let offset: Double = 2.5
-        static let pulseSpeed: Double = 1.8
+        static let offset: Double = 0
+        static let pulseSpeed: Double = 2.2
     }
 
     func resetGlow() {
+        glowStyle = .diffuse
         glowWidth = GlowDefaults.width
         glowBlur = GlowDefaults.blur
         glowIntensity = GlowDefaults.intensity

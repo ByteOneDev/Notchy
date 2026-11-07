@@ -41,6 +41,13 @@ enum Snapshots {
         CalendarService.shared.scrollAgenda(by: 90)
         save(frame(OpenNotchView(viewModel: model), size: model.openSize), to: folder.appendingPathComponent("tab-calendar-scrolled.png"))
         CalendarService.shared.agendaOffset = 0
+        // The glow around the closed notch, in both styles, on a wallpaper.
+        let glowStyle = AppSettings.shared.glowStyle
+        for style in GlowStyle.allCases {
+            AppSettings.shared.glowStyle = style
+            save(glowScene(notch: model.notchSize), to: folder.appendingPathComponent("glow-\(style.rawValue).png"))
+        }
+        AppSettings.shared.glowStyle = glowStyle
         model.tab = .home
         // Each style of the calendar's day picker (the setting is put back afterwards).
         let settings = AppSettings.shared
@@ -56,6 +63,31 @@ enum Snapshots {
             let view = OpenNotchView(viewModel: model, homeOverride: layout)
             save(frame(view, size: model.openSize), to: folder.appendingPathComponent("home-\(name).png"))
         }
+    }
+
+    private static func glowScene(notch: CGSize) -> some View {
+        let shape = NotchShape(topRadius: 6, bottomRadius: 11)
+        let color = Color(red: 1, green: 0.42, blue: 0.35)
+        return ZStack(alignment: .top) {
+            LinearGradient(colors: [Color(red: 0.22, green: 0.18, blue: 0.42), Color(red: 0.5, green: 0.3, blue: 0.5)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+            Rectangle().fill(Color.black.opacity(0.3)).frame(height: notch.height)
+            ZStack {
+                shape.fill(Color.black)
+                HStack {
+                    RoundedRectangle(cornerRadius: 6).fill(LinearGradient(colors: [.pink, .orange], startPoint: .top, endPoint: .bottom))
+                        .frame(width: 22, height: 22)
+                    Spacer()
+                    AudioVisualizer(color: color, playing: false)
+                }
+                .padding(.horizontal, 10)
+            }
+            .frame(width: notch.width + 100, height: notch.height)
+            .background { if AppSettings.shared.glowStyle == .diffuse { AudioGlow(shape: shape, color: color) } }
+            .overlay { if AppSettings.shared.glowStyle == .line { AudioGlow(shape: shape, color: color) } }
+        }
+        .frame(width: 700, height: 220)
+        .environment(\.colorScheme, .dark)
     }
 
     private static func frame(_ view: some View, size: CGSize) -> some View {

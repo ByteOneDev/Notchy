@@ -364,6 +364,10 @@ enum Strings {
         "glow.title": ("Contour lumineux", "Glowing outline"),
         "glow.enabled": ("Contour lumineux pendant la lecture", "Glowing outline while playing"),
         "glow.width": ("Épaisseur", "Thickness"),
+        "glow.spread": ("Étendue", "Spread"),
+        "glow.style": ("Style", "Style"),
+        "glow.style.diffuse": ("Diffus", "Diffuse"),
+        "glow.style.line": ("Trait", "Line"),
         "glow.blur": ("Diffusion", "Diffusion"),
         "glow.intensity": ("Intensité", "Intensity"),
         "glow.offset": ("Position (vers le bas)", "Position (downward)"),
@@ -374,8 +378,8 @@ enum Strings {
         "glow.color.custom": ("Personnalisée", "Custom"),
         "glow.color.pick": ("Couleur du contour", "Outline color"),
         "glow.whenPaused": ("Garder le contour quand la musique est en pause", "Keep the outline while paused"),
-        "glow.hint": ("Le contour suit les côtés et le bas de l'encoche, de la couleur de ce qui joue.",
-                      "The outline follows the sides and bottom of the notch, in the color of what's playing."),
+        "glow.hint": ("Diffus : une lumière derrière l'encoche qui se diffuse sur l'écran, comme un rétroéclairage. Trait : une ligne lumineuse le long du bord. Les deux prennent la couleur de ce qui joue.",
+                      "Diffuse: a light behind the notch that spreads onto the screen, like a backlight. Line: a glowing line along the edge. Both take the color of what's playing."),
 
         // Home and widgets
         "home.title": ("Accueil", "Home"),
@@ -488,8 +492,9 @@ enum Strings {
         "settings.dayPicker": ("Sélecteur de jour", "Day picker"),
         "settings.dayPicker.notchNook": ("NotchNook", "NotchNook"),
         "settings.dayPicker.carousel": ("Carrousel", "Carousel"),
+        "settings.dayPicker.ruler": ("Règle", "Ruler"),
         "settings.dayPicker.bigDate": ("Grande date", "Big date"),
-        "settings.dayPicker.hint": ("NotchNook : la semaine avec une pastille rouge. Carrousel : les jours défilent sous une pastille fixe. Grande date : le jour en grand, comme un éphéméride.",
-                                    "NotchNook: the week with a red disc. Carousel: days slide under a fixed highlight. Big date: the day in large type, like a desk calendar."),
+        "settings.dayPicker.hint": ("NotchNook : la semaine avec une pastille rouge. Carrousel : les jours défilent sous une pastille fixe. Règle : une graduation par jour sous une aiguille, comme le minuteur. Grande date : le jour en grand, comme un éphéméride. Tous se font glisser à la souris ou à deux doigts.",
+                                    "NotchNook: the week with a red disc. Carousel: days slide under a fixed highlight. Ruler: a tick per day under a needle, like the timer. Big date: the day in large type, like a desk calendar. All of them can be dragged or swiped."),
     ]
 }

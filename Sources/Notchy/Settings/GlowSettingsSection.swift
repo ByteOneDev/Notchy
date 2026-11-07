@@ -9,8 +9,14 @@ struct GlowSettingsSection: View {
             Toggle(L("glow.enabled"), isOn: $settings.audioGlow)
             if settings.audioGlow {
                 preview
-                slider("glow.width", value: $settings.glowWidth, range: 1...8, step: 0.5, unit: "pt")
-                slider("glow.blur", value: $settings.glowBlur, range: 0...30, step: 1, unit: "pt")
+                Picker(L("glow.style"), selection: $settings.glowStyle) {
+                    Text(L("glow.style.diffuse")).tag(GlowStyle.diffuse)
+                    Text(L("glow.style.line")).tag(GlowStyle.line)
+                }
+                .pickerStyle(.segmented)
+                slider(settings.glowStyle == .diffuse ? "glow.spread" : "glow.width", value: $settings.glowWidth,
+                       range: 1...16, step: 0.5, unit: "pt")
+                slider("glow.blur", value: $settings.glowBlur, range: 0...60, step: 1, unit: "pt")
                 slider("glow.intensity", value: $settings.glowIntensity, range: 0.2...1, step: 0.05, percent: true)
                 slider("glow.offset", value: $settings.glowOffset, range: -2...8, step: 0.5, unit: "pt")
                 Toggle(L("glow.pulse"), isOn: $settings.glowPulse)
@@ -49,6 +55,9 @@ struct GlowSettingsSection: View {
                            startPoint: .topLeading, endPoint: .bottomTrailing)
             Rectangle().fill(Color.black.opacity(0.35)).frame(height: 32)
             ZStack {
+                if settings.glowStyle == .diffuse {
+                    AudioGlow(shape: shape, color: Color(red: 1, green: 0.45, blue: 0.45))
+                }
                 shape.fill(Color.black)
                 HStack {
                     RoundedRectangle(cornerRadius: 5).fill(LinearGradient(colors: [.pink, .orange], startPoint: .top, endPoint: .bottom))
@@ -59,9 +68,13 @@ struct GlowSettingsSection: View {
                 .padding(.horizontal, 12)
             }
             .frame(width: 250, height: 32)
-            .overlay(AudioGlow(shape: shape, color: Color(red: 1, green: 0.45, blue: 0.45)))
+            .overlay {
+                if settings.glowStyle == .line {
+                    AudioGlow(shape: shape, color: Color(red: 1, green: 0.45, blue: 0.45))
+                }
+            }
         }
-        .frame(height: 96)
+        .frame(height: 120)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .padding(.vertical, 4)
     }

@@ -66,9 +66,13 @@ final class CalendarService: ObservableObject {
         agendaOffset = min(max(0, agendaOffset + delta), agendaMaxOffset)
     }
 
-    func moveSelection(by days: Int) {
+    func moveSelection(by days: Int, animated: Bool = true) {
         guard let day = Calendar.current.date(byAdding: .day, value: days, to: selectedDay) else { return }
-        withAnimation(.daySlide) { selectedDay = day }
+        if animated {
+            withAnimation(.daySlide) { selectedDay = day }
+        } else {
+            selectedDay = day
+        }
         // Swiping far from the loaded range: load events around the new day.
         if abs(day.timeIntervalSince(loadedCenter)) > 10 * 86_400 { reload() }
     }

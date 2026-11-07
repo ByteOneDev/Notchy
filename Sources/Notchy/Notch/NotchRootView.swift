@@ -84,10 +84,16 @@ struct NotchRootView: View {
         .frame(width: size.width, height: size.height, alignment: .top)
         .background(NotchBackground(appearance: settings.appearance, isOpen: viewModel.isOpen, shape: shape))
         .clipShape(shape)
+        .background {
+            if showsAudioGlow, settings.glowStyle == .diffuse, !viewModel.dropTargeted {
+                AudioGlow(shape: shape, color: media.accent)
+                    .transition(.opacity.animation(.easeInOut(duration: 0.5)))
+            }
+        }
         .overlay {
             if viewModel.dropTargeted {
                 shape.stroke(Color.white.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-            } else if showsAudioGlow {
+            } else if showsAudioGlow, settings.glowStyle == .line {
                 AudioGlow(shape: shape, color: media.accent)
                     .transition(.opacity.animation(.easeInOut(duration: 0.5)))
             }
@@ -125,22 +131,52 @@ struct AudioGlow: View {
     }
 
     var body: some View {
-        let tint = glowColor.opacity(settings.glowIntensity)
-        let outline = NotchOutline(topRadius: shape.topRadius, bottomRadius: shape.bottomRadius, extendBottom: settings.glowOffset)
-            .stroke(tint, style: StrokeStyle(lineWidth: settings.glowWidth, lineCap: .round, lineJoin: .round))
-            // Diffusion: a tight halo plus a wide one.
-            .shadow(color: glowColor.opacity(0.95 * settings.glowIntensity), radius: settings.glowBlur / 3)
-            .shadow(color: glowColor.opacity(0.65 * settings.glowIntensity), radius: settings.glowBlur)
-            .allowsHitTesting(false)
-            .animation(.easeInOut(duration: 0.6), value: glowColor)
-        if settings.glowPulse {
-            outline
-                .phaseAnimator([0.5, 1.0]) { content, phase in
+        Group {
+            if settings.glowPulse {
+                glow.phaseAnimator([0.55, 1.0]) { content, phase in
                     content.opacity(phase)
                 } animation: { _ in .easeInOut(duration: settings.glowPulseSpeed) }
-        } else {
-            outline
+            } else {
+                glow
+            }
         }
+        .allowsHitTesting(false)
+        .animation(.easeInOut(duration: 0.6), value: glowColor)
+    }
+
+    @ViewBuilder private var glow: some View {
+        switch settings.glowStyle {
+        case .diffuse: diffuse
+        case .line: line
+        }
+    }
+
+    /// Drawn behind the notch: the black shape hides the light source and only the halo
+    /// spills onto the screen, wider and fainter layer after layer, like a backlight.
+    private var diffuse: some View {
+        let blur = max(settings.glowBlur, 1)
+        let source = ZStack {
+            shape.fill(glowColor)
+            shape.stroke(glowColor, lineWidth: settings.glowWidth * 2)
+        }
+        return ZStack {
+            source.blur(radius: blur * 0.3).opacity(0.85)
+            source.blur(radius: blur).opacity(0.65)
+            source.blur(radius: blur * 2.2).opacity(0.5)
+            source.blur(radius: blur * 4).opacity(0.4)
+        }
+        .offset(y: settings.glowOffset)
+        .opacity(settings.glowIntensity)
+        .drawingGroup()
+    }
+
+    /// A glowing line along the sides and bottom of the notch.
+    private var line: some View {
+        let tint = glowColor.opacity(settings.glowIntensity)
+        return NotchOutline(topRadius: shape.topRadius, bottomRadius: shape.bottomRadius, extendBottom: settings.glowOffset)
+            .stroke(tint, style: StrokeStyle(lineWidth: settings.glowWidth, lineCap: .round, lineJoin: .round))
+            .shadow(color: glowColor.opacity(0.95 * settings.glowIntensity), radius: settings.glowBlur / 3)
+            .shadow(color: glowColor.opacity(0.65 * settings.glowIntensity), radius: settings.glowBlur)
     }
 }
 

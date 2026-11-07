@@ -11,6 +11,9 @@ struct CalendarWidget: View {
     @ObservedObject private var service = CalendarService.shared
     @ObservedObject private var settings = AppSettings.shared
     @Namespace private var selection
+    /// Days dragged with the mouse on the carousel or the ruler, fractional while the drag lasts.
+    @State private var dragDays: Double = 0
+    @State private var weekWidth: CGFloat = 0
 
     private var calendar: Calendar {
         var calendar = Calendar.current
@@ -33,6 +36,12 @@ struct CalendarWidget: View {
                 VStack(alignment: .leading, spacing: 6) {
                     titleHeader
                     dayStrip
+                    agendaOrAccess
+                }
+            case .ruler:
+                VStack(alignment: .leading, spacing: 6) {
+                    notchNookHeader
+                    dayRuler
                     agendaOrAccess
                 }
             case .bigDate:
@@ -120,6 +129,16 @@ struct CalendarWidget: View {
                 .onTapGesture { withAnimation(.daySlide) { service.selectedDay = day } }
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { weekWidth = $0 }
+        .contentShape(Rectangle())
+        // Dragging along the week moves the disc under the pointer, a tick at each day.
+        .gesture(DragGesture(minimumDistance: 3).onChanged { value in
+            guard weekWidth > 0 else { return }
+            let index = min(6, max(0, Int(value.location.x / (weekWidth / 7))))
+            guard index < week.count, !calendar.isDate(week[index], inSameDayAs: selected) else { return }
+            Haptics.tap()
+            withAnimation(.daySlide) { service.selectedDay = week[index] }
+        })
         .id(start)
         .transition(.asymmetric(
             insertion: .move(edge: service.movedForward ? .trailing : .leading).combined(with: .opacity),
@@ -181,11 +200,12 @@ struct CalendarWidget: View {
                 let days = (-reach...reach).compactMap { calendar.date(byAdding: .day, value: $0, to: selected) }
                 ForEach(days, id: \.self) { day in
                     let offset = calendar.dateComponents([.day], from: selected, to: day).day ?? 0
-                    let distance = abs(Double(offset))
-                    DayCell(day: day, calendar: calendar, selected: offset == 0, hasEvents: !service.events(on: day).isEmpty)
-                        .scaleEffect(offset == 0 ? 1 : max(0.78, 1 - distance * 0.05))
+                    let shifted = Double(offset) - dragDays
+                    let distance = abs(shifted)
+                    DayCell(day: day, calendar: calendar, selected: distance < 0.5, hasEvents: !service.events(on: day).isEmpty)
+                        .scaleEffect(max(0.78, 1 - distance * 0.05))
                         .opacity(max(0.25, 1 - distance * 0.13))
-                        .position(x: center + CGFloat(offset) * cell, y: 21)
+                        .position(x: center + CGFloat(shifted) * cell, y: 21)
                         .onTapGesture { withAnimation(.daySlide) { service.selectedDay = day } }
                         .transition(.opacity)
                 }
@@ -195,6 +215,85 @@ struct CalendarWidget: View {
         // The strip is cut at the edge rather than widening the panel when space is short.
         .frame(minWidth: 0, maxWidth: .infinity)
         .clipped()
+        .contentShape(Rectangle())
+        .gesture(dayDrag(spacing: 36))
+        .animation(.daySlide, value: selected)
+    }
+
+    /// Drags the carousel or the ruler like the timer's: the days follow the pointer with a
+    /// tick at each one, then settle on the nearest.
+    private func dayDrag(spacing: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 3)
+            .onChanged { value in
+                // Dragging left brings the next days, like pulling the strip.
+                let days = -Double(value.translation.width / spacing)
+                if Int(days.rounded()) != Int(dragDays.rounded()) { Haptics.tap() }
+                dragDays = days
+            }
+            .onEnded { _ in
+                let step = Int(dragDays.rounded())
+                // Jump the selection by whole days without animation, so nothing moves on
+                // screen, then ease out what is left of the drag.
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    if step != 0 { service.moveSelection(by: step, animated: false) }
+                    dragDays -= Double(step)
+                }
+                withAnimation(.daySlide) { dragDays = 0 }
+            }
+    }
+
+    // MARK: Ruler style
+
+    /// One tick per day under a fixed red needle, longer on the first day of each week, with
+    /// the day numbers below; dragged or swiped like the timer's ruler.
+    private var dayRuler: some View {
+        GeometryReader { geo in
+            let spacing: CGFloat = 26
+            let center = geo.size.width / 2
+            let reach = Int(center / spacing) + 2
+            let days = (-reach...reach).compactMap { calendar.date(byAdding: .day, value: $0, to: selected) }
+            ZStack {
+                ForEach(days, id: \.self) { day in
+                    let offset = calendar.dateComponents([.day], from: selected, to: day).day ?? 0
+                    let shifted = Double(offset) - dragDays
+                    let isCurrent = abs(shifted) < 0.5
+                    let weekStart = calendar.component(.weekday, from: day) == calendar.firstWeekday
+                    let isToday = calendar.isDateInToday(day)
+                    VStack(spacing: 3) {
+                        Circle().fill(service.events(on: day).isEmpty ? Color.clear : Color.white.opacity(0.5))
+                            .frame(width: 3, height: 3)
+                        Capsule()
+                            .fill(isToday ? Color.red : Color.white.opacity(weekStart ? 0.75 : 0.32))
+                            .frame(width: weekStart ? 1.5 : 1, height: weekStart ? 15 : 9)
+                            .frame(height: 15, alignment: .bottom)
+                        Text("\(calendar.component(.day, from: day))")
+                            .font(.system(size: isCurrent ? 11 : 9, weight: isCurrent ? .bold : .semibold).monospacedDigit())
+                            .foregroundStyle(isCurrent ? .white : isToday ? .red : .white.opacity(0.45))
+                    }
+                    .frame(width: spacing, height: 40)
+                    .contentShape(Rectangle())
+                    .position(x: center + CGFloat(shifted) * spacing, y: 22)
+                    .onTapGesture { withAnimation(.daySlide) { service.selectedDay = day } }
+                }
+                VStack(spacing: 0) {
+                    Image(systemName: "arrowtriangle.down.fill").font(.system(size: 7))
+                    Capsule().frame(width: 2.5, height: 18)
+                }
+                .foregroundStyle(.red)
+                .position(x: center, y: 14)
+                .allowsHitTesting(false)
+            }
+        }
+        .frame(height: 44)
+        .frame(minWidth: 0, maxWidth: .infinity)
+        .clipped()
+        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.18),
+                                     .init(color: .black, location: 0.82), .init(color: .clear, location: 1)],
+                             startPoint: .leading, endPoint: .trailing))
+        .contentShape(Rectangle())
+        .gesture(dayDrag(spacing: 26))
         .animation(.daySlide, value: selected)
     }
 
