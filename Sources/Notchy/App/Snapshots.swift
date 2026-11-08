@@ -26,6 +26,10 @@ enum Snapshots {
     private static func render(to folder: URL) {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         checkLogic(to: folder.appendingPathComponent("logic.txt"))
+        for scene in TourScene.allCases {
+            save(TourPageSnapshot(scene: scene).environment(\.colorScheme, .dark),
+                 to: folder.appendingPathComponent("tour-\(scene.rawValue)-\(scene).png"))
+        }
         guard let screen = NSScreen.screens.first(where: \.isBuiltIn) ?? NSScreen.main else { return }
         let model = NotchViewModel(screen: screen)
         for tab in NotchTab.allCases where tab != .mirror {

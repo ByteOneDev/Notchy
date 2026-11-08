@@ -178,7 +178,9 @@ private struct GeneralPane: View {
                 Text(L("settings.display.main")).tag(DisplayTarget.main)
                 Text(L("settings.display.all")).tag(DisplayTarget.all)
             }
-            Toggle(L("settings.hideFullscreen"), isOn: $settings.hideInFullscreen)
+            Picker(L("settings.fullscreen"), selection: $settings.fullscreenBehavior) {
+                ForEach(FullscreenBehavior.allCases) { Text($0.title).tag($0) }
+            }
             Toggle(L("settings.lockScreen"), isOn: $settings.showOnLockScreen)
         }
     }
@@ -573,6 +575,8 @@ private struct AboutPane: View {
                     Text("Notchy").font(.title2.bold())
                     Text(L("about.version", UpdateChecker.currentVersion)).foregroundStyle(.secondary)
                 }
+                Spacer()
+                Button(L("menu.tour")) { TourWindowController.shared.show() }
             }
             .padding(.vertical, 4)
         }

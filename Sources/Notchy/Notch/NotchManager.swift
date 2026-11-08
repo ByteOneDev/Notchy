@@ -33,9 +33,7 @@ final class NotchManager {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self?.updateFullscreen() }
             }
             .store(in: &cancellables)
-        fullscreenTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.updateFullscreen() }
-        }
+        scheduleFullscreenCheck(every: 1)
     }
 
     /// The notch the user most likely looks at: the one under the mouse, else the first one.
@@ -93,11 +91,29 @@ final class NotchManager {
         }
     }
 
+    private func scheduleFullscreenCheck(every interval: TimeInterval) {
+        guard fullscreenTimer?.timeInterval != interval else { return }
+        fullscreenTimer?.invalidate()
+        fullscreenTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updateFullscreen() }
+        }
+    }
+
     private func updateFullscreen() {
-        let enabled = AppSettings.shared.hideInFullscreen
-        let fullscreenDisplays = enabled ? Self.fullscreenSpaceDisplays().union(Self.displaysWithFullscreenWindow()) : []
+        let behavior = AppSettings.shared.fullscreenBehavior
+        let fullscreenDisplays = behavior == .visible ? [] : Self.fullscreenSpaceDisplays().union(Self.displaysWithFullscreenWindow())
+        // Following the menu bar needs a quick eye while something is in full screen.
+        let followMenuBar = behavior == .withMenuBar && !fullscreenDisplays.isEmpty
+        scheduleFullscreenCheck(every: followMenuBar ? 0.15 : 1)
+        let windows = followMenuBar
+            ? CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+            : []
         for (id, controller) in controllers {
-            let hidden = fullscreenDisplays.contains(id)
+            var hidden = fullscreenDisplays.contains(id)
+            if hidden, followMenuBar {
+                // Back with the menu bar; and an open notch stays until it is left.
+                hidden = !Self.menuBarWindowVisible(on: CGDisplayBounds(id), windows: windows) && !controller.viewModel.isOpen
+            }
             if controller.viewModel.hiddenForFullscreen != hidden {
                 controller.viewModel.hiddenForFullscreen = hidden
                 if hidden { controller.viewModel.close() }

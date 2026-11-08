@@ -20,6 +20,18 @@ enum DisplayTarget: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// What the notch does on a display showing a full-screen app.
+enum FullscreenBehavior: String, CaseIterable, Identifiable {
+    /// Works as usual.
+    case visible
+    /// Hidden, and back while the menu bar is pulled down.
+    case withMenuBar
+    /// Hidden.
+    case hidden
+    var id: String { rawValue }
+    var title: String { L("settings.fullscreen.\(rawValue)") }
+}
+
 /// How the light around the notch is drawn while audio plays.
 enum GlowStyle: String, CaseIterable, Identifiable {
     /// A soft backlight: the notch hides the light source and only the halo spills onto the screen.
@@ -54,7 +66,7 @@ final class AppSettings: ObservableObject {
     @Published var openOnHover: Bool { didSet { save(openOnHover, "openOnHover") } }
     @Published var hoverDelay: Double { didSet { save(hoverDelay, "hoverDelay") } }
     @Published var haptics: Bool { didSet { save(haptics, "haptics") } }
-    @Published var hideInFullscreen: Bool { didSet { save(hideInFullscreen, "hideInFullscreen") } }
+    @Published var fullscreenBehavior: FullscreenBehavior { didSet { save(fullscreenBehavior.rawValue, "fullscreenBehavior") } }
     @Published var showOnLockScreen: Bool { didSet { save(showOnLockScreen, "showOnLockScreen") } }
     @Published var showMenuBarIcon: Bool { didSet { save(showMenuBarIcon, "showMenuBarIcon") } }
 
@@ -171,7 +183,9 @@ final class AppSettings: ObservableObject {
         openOnHover = value("openOnHover", false)
         hoverDelay = value("hoverDelay", 0.12)
         haptics = value("haptics", true)
-        hideInFullscreen = value("hideInFullscreen", true)
+        // Before 0.9 this was an on/off switch: off kept the notch, on hid it.
+        fullscreenBehavior = FullscreenBehavior(rawValue: value("fullscreenBehavior", "")) ??
+            (value("hideInFullscreen", true) ? .withMenuBar : .visible)
         showOnLockScreen = value("showOnLockScreen", true)
         showMenuBarIcon = value("showMenuBarIcon", true)
         mediaEnabled = value("mediaEnabled", true)

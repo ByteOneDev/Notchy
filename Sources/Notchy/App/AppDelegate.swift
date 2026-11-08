@@ -56,6 +56,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             UserDefaults.standard.set(true, forKey: "didOnboard")
             SettingsWindowController.shared.show(pane: .permissions)
         }
+        // The tour, once, a moment after launch (and above the settings on a first run).
+        if ProcessInfo.processInfo.environment["NOTCHY_SNAPSHOTS"] == nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { TourWindowController.shared.showIfNeeded() }
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -102,6 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(withTitle: L("menu.open"), action: #selector(openNotch), keyEquivalent: "").target = target
         menu.addItem(.separator())
         menu.addItem(withTitle: L("menu.settings"), action: #selector(openSettings), keyEquivalent: ",").target = target
+        menu.addItem(withTitle: L("menu.tour"), action: #selector(openTour), keyEquivalent: "").target = target
         menu.addItem(withTitle: L("menu.updates"), action: #selector(checkUpdates), keyEquivalent: "").target = target
         menu.addItem(.separator())
         menu.addItem(withTitle: L("menu.quit"), action: #selector(quit), keyEquivalent: "q").target = target
@@ -110,6 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func openNotch() { NotchManager.shared.openPrimary() }
     @objc func openSettings() { SettingsWindowController.shared.show() }
+    @objc func openTour() { TourWindowController.shared.show() }
     @objc func checkUpdates() { UpdateChecker.shared.check(userInitiated: true) }
     @objc func quit() { NSApp.terminate(nil) }
 }

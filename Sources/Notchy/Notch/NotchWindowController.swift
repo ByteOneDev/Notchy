@@ -112,10 +112,10 @@ final class NotchWindowController {
             .sink { [weak self] hide in self?.panel.sharingType = hide ? .none : .readOnly }
             .store(in: &cancellables)
         // Without .fullScreenAuxiliary, macOS itself keeps the window out of full-screen spaces.
-        AppSettings.shared.$hideInFullscreen
-            .sink { [weak self] hide in
+        AppSettings.shared.$fullscreenBehavior
+            .sink { [weak self] fullscreen in
                 var behavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
-                if !hide { behavior.insert(.fullScreenAuxiliary) }
+                if fullscreen != .hidden { behavior.insert(.fullScreenAuxiliary) }
                 self?.panel.collectionBehavior = behavior
             }
             .store(in: &cancellables)

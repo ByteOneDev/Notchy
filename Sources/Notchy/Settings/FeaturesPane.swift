@@ -61,7 +61,11 @@ struct FeaturesPane: View {
             row("moon.stars.fill", .purple, "features.modes", $settings.modesEnabled)
             row("display.2", .blue, "features.externalNotch",
                 Binding(get: { settings.notchOnExternalDisplays }, set: { settings.notchOnExternalDisplays = $0 }))
-            row("arrow.up.left.and.arrow.down.right", .gray, "features.hideFullscreen", $settings.hideInFullscreen)
+            Picker(selection: $settings.fullscreenBehavior) {
+                ForEach(FullscreenBehavior.allCases) { Text($0.title).tag($0) }
+            } label: {
+                label("arrow.up.left.and.arrow.down.right", .gray, L("settings.fullscreen"))
+            }
             row("eye.slash.fill", .gray, "features.hideFromCapture", $settings.hideFromScreenCapture)
             row("cursorarrow.motionlines", .gray, "features.hover", $settings.openOnHover)
             row("rectangle.expand.vertical", .gray, "features.adaptive", $settings.adaptiveSize)
