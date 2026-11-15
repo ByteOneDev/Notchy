@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notchy — l'encoche de ton Mac, en mieux</title>
+<meta name="description" content="Notchy transforme l'encoche de ton Mac en centre de contrôle : musique, calendrier, activités en direct, fichiers, modes de concentration et agents IA.">
+<link rel="icon" href="logo.png">
+<meta property="og:title" content="Notchy">
+<meta property="og:description" content="L'encoche de ton Mac devient un petit centre de contrôle.">
+<meta property="og:image" content="logo.png">
+<style>
+  :root {
+    --bg: #07070b;
+    --panel: #111118;
+    --line: rgba(255, 255, 255, .08);
+    --text: #f4f4f7;
+    --muted: #a1a1b0;
+    --pink: #ff5fa2;
+    --violet: #a46bff;
+    --cyan: #4fd6ff;
+    --orange: #ff9f45;
+    --radius: 22px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; overflow-x: clip; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  a { color: inherit; }
+  .wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
+
+  /* Navigation */
+  nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(16px); background: rgba(7, 7, 11, .7); border-bottom: 1px solid var(--line); }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+  nav .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; }
+  nav .brand img { width: 28px; height: 28px; }
+  nav .links { display: flex; gap: 22px; font-size: 14px; color: var(--muted); }
+  nav .links a { text-decoration: none; }
+  nav .links a:hover { color: var(--text); }
+
+  /* Hero */
+  .hero { position: relative; padding: 80px 0 40px; text-align: center; }
+  .hero::before {
+    content: ""; position: absolute; inset: -200px 0 auto; height: 700px; z-index: -1;
+    background: radial-gradient(600px 340px at 50% 30%, rgba(164, 107, 255, .35), transparent 70%),
+                radial-gradient(420px 260px at 30% 45%, rgba(255, 95, 162, .22), transparent 70%),
+                radial-gradient(420px 260px at 70% 45%, rgba(79, 214, 255, .18), transparent 70%);
+  }
+  .hero img.logo { width: 112px; height: 112px; filter: drop-shadow(0 18px 40px rgba(164, 107, 255, .45)); animation: float 6s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-8px); } }
+  h1 { font-size: clamp(40px, 7vw, 76px); line-height: 1.02; letter-spacing: -.035em; margin: 24px 0 14px; }
+  h1 .grad { background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: clamp(17px, 2.2vw, 21px); color: var(--muted); max-width: 640px; margin: 0 auto; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 32px 0 12px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; border-radius: 999px; font-weight: 650; text-decoration: none; transition: transform .15s, background .15s; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: #fff; color: #000; }
+  .btn.ghost { background: rgba(255, 255, 255, .08); border: 1px solid var(--line); }
+  .meta { font-size: 13px; color: var(--muted); }
+
+  /* The animated demo */
+  .stage { margin: 48px auto 0; width: min(880px, 100%); }
+  .screen {
+    position: relative; aspect-ratio: 16 / 9; border-radius: 26px; overflow: hidden;
+    background: linear-gradient(135deg, #3b2f7d, #8c3f86 60%, #c86a5d);
+    border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 40px 120px rgba(0, 0, 0, .6);
+  }
+  .screen .menubar { position: absolute; inset: 0 0 auto; height: 5.5%; background: rgba(0, 0, 0, .28); }
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    background: #000; border-radius: 0 0 14px 14px;
+    width: 22%; height: 5.5%;
+    animation: notch 12s cubic-bezier(.3, 1.4, .5, 1) infinite;
+  }
+  /* The light behind the notch while music plays. */
+  .notch::before {
+    content: ""; position: absolute; inset: -10% -6%; z-index: -1; border-radius: inherit;
+    background: var(--pink); filter: blur(28px); opacity: 0;
+    animation: glow 12s ease-in-out infinite;
+  }
+  @keyframes notch {
+    0%, 8% { width: 22%; height: 5.5%; border-radius: 0 0 14px 14px; }
+    12%, 40% { width: 30%; height: 5.5%; border-radius: 0 0 14px 14px; }
+    46%, 82% { width: 64%; height: 38%; border-radius: 0 0 34px 34px; }
+    88%, 100% { width: 22%; height: 5.5%; border-radius: 0 0 14px 14px; }
+  }
+  @keyframes glow { 0%, 10% { opacity: 0; } 16%, 40% { opacity: .9; } 46%, 100% { opacity: 0; } }
+  .compact { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 3%; opacity: 0; animation: compact 12s infinite; }
+  .compact .art { width: 7%; aspect-ratio: 1; border-radius: 4px; background: linear-gradient(var(--pink), var(--orange)); min-width: 14px; }
+  .bars { display: flex; gap: 2px; align-items: center; height: 60%; }
+  .bars i { display: block; width: 3px; border-radius: 2px; background: var(--pink); animation: bar .9s ease-in-out infinite; }
+  .bars i:nth-child(2) { animation-delay: .2s; } .bars i:nth-child(3) { animation-delay: .4s; } .bars i:nth-child(4) { animation-delay: .1s; }
+  @keyframes bar { 0%, 100% { height: 30%; } 50% { height: 100%; } }
+  @keyframes compact { 0%, 11% { opacity: 0; } 14%, 40% { opacity: 1; } 43%, 100% { opacity: 0; } }
+  .open { position: absolute; inset: 14% 5% 8%; display: grid; grid-template-columns: 1.3fr 1px 1fr; gap: 4%; opacity: 0; animation: open 12s infinite; }
+  @keyframes open { 0%, 47% { opacity: 0; transform: scale(.96); } 52%, 80% { opacity: 1; transform: none; } 84%, 100% { opacity: 0; } }
+  .player { display: flex; gap: 6%; align-items: center; }
+  .player .cover { width: 34%; aspect-ratio: 1; border-radius: 12px; background: linear-gradient(135deg, var(--violet), var(--pink)); box-shadow: 0 10px 30px rgba(255, 95, 162, .4); }
+  .player .lines { flex: 1; display: grid; gap: 10px; }
+  .line { height: 8px; border-radius: 5px; background: rgba(255, 255, 255, .8); }
+  .line.dim { background: rgba(255, 255, 255, .3); }
+  .progress { height: 5px; border-radius: 4px; background: rgba(255, 255, 255, .15); overflow: hidden; }
+  .progress b { display: block; height: 100%; width: 40%; background: var(--pink); animation: progress 12s linear infinite; }
+  @keyframes progress { from { width: 30%; } to { width: 70%; } }
+  .sep { background: rgba(255, 255, 255, .12); }
+  .cal { display: grid; gap: 10px; align-content: start; }
+  .cal .head { font-weight: 800; font-size: clamp(10px, 1.6vw, 15px); }
+  .cal .head b { color: #ff453a; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-size: clamp(8px, 1.2vw, 12px); color: rgba(255, 255, 255, .8); }
+  .week span { padding: 3px 0; border-radius: 999px; }
+  .week .sel { background: #ff453a; color: #fff; font-weight: 700; }
+  .event { border-left: 3px solid var(--cyan); padding-left: 8px; display: grid; gap: 5px; }
+  .bar-panels { position: absolute; left: 50%; transform: translateX(-50%); top: 41%; display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(0, 0, 0, .85); opacity: 0; animation: open 12s infinite; }
+  .bar-panels i { width: 22px; height: 16px; border-radius: 999px; background: rgba(255, 255, 255, .18); }
+  .bar-panels i:first-child { width: 46px; background: #fff; }
+
+  /* Sections */
+  section { padding: 90px 0 0; }
+  .eyebrow { color: var(--violet); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+  h2 { font-size: clamp(30px, 4.6vw, 46px); letter-spacing: -.025em; line-height: 1.1; margin: 10px 0 14px; }
+  .sub { color: var(--muted); font-size: 18px; max-width: 640px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 36px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; transition: transform .2s, border-color .2s; }
+  .card:hover { transform: translateY(-3px); border-color: rgba(255, 255, 255, .16); }
+  .card .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 21px; margin-bottom: 14px; }
+  .card h3 { margin: 0 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  /* Feature rows with a small live demo */
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; margin-top: 70px; }
+  .row.flip .demo { order: -1; }
+  .demo { contain: paint; aspect-ratio: 4 / 3; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); position: relative; overflow: hidden; display: grid; place-items: center; }
+  .demo::before { content: ""; position: absolute; inset: 0; background: radial-gradient(70% 60% at 50% 0%, rgba(164, 107, 255, .18), transparent); }
+  .pill { position: absolute; top: 0; left: 50%; transform: translateX(-50%); background: #000; height: 30px; border-radius: 0 0 14px 14px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; color: #fff; font-size: 12px; font-weight: 650; }
+  .hud { width: 46%; animation: hud 6s infinite; }
+  .hud .level { width: 46%; height: 5px; border-radius: 4px; background: rgba(255, 255, 255, .2); overflow: hidden; }
+  .hud .level b { display: block; height: 100%; background: #fff; animation: level 6s infinite; }
+  @keyframes hud { 0%, 100% { width: 22%; } 10%, 85% { width: 46%; } }
+  @keyframes level { 0%, 15% { width: 30%; } 40% { width: 80%; } 70%, 100% { width: 55%; } }
+  .ruler { position: relative; width: 78%; height: 70px; overflow: hidden; -webkit-mask: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
+  .ticks { position: absolute; top: 10px; left: 0; display: flex; gap: 8px; animation: ticks 7s ease-in-out infinite alternate; }
+  .ticks i { width: 1.5px; height: 12px; background: rgba(255, 255, 255, .35); }
+  .ticks i:nth-child(5n) { height: 22px; background: rgba(255, 255, 255, .8); }
+  @keyframes ticks { from { transform: translateX(-10%); } to { transform: translateX(-45%); } }
+  .needle { position: absolute; left: 50%; top: 4px; width: 3px; height: 34px; border-radius: 3px; background: var(--orange); transform: translateX(-50%); }
+  .timer-big { position: absolute; top: 22%; font-size: 52px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .browser { width: 72%; border-radius: 14px; background: #000; border: 1px solid var(--line); padding: 10px; }
+  .browser .dots { display: flex; gap: 5px; margin-bottom: 10px; } .browser .dots i { width: 8px; height: 8px; border-radius: 50%; }
+  .browser .page { height: 120px; border-radius: 10px; display: grid; place-items: center; position: relative; overflow: hidden; }
+  .browser .yt, .browser .blocked { position: absolute; inset: 0; display: grid; place-items: center; }
+  .browser .yt { background: #1a0d0d; animation: yt 6s infinite; }
+  .browser .yt::after { content: ""; width: 54px; height: 38px; border-radius: 10px; background: #ff0033; }
+  .browser .blocked { background: #0b0b12; text-align: center; font-weight: 650; font-size: 14px; animation: blocked 6s infinite; }
+  @keyframes yt { 0%, 40% { opacity: 1; } 50%, 90% { opacity: 0; } 100% { opacity: 1; } }
+  @keyframes blocked { 0%, 40% { opacity: 0; } 50%, 90% { opacity: 1; } 100% { opacity: 0; } }
+  .agent { width: 70%; display: grid; gap: 12px; }
+  .agent .bubble { background: #000; border-radius: 18px; padding: 16px; border: 1px solid var(--line); }
+  .agent .actions { display: flex; gap: 8px; margin-top: 12px; }
+  .agent .actions span { padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 650; background: rgba(255, 255, 255, .12); }
+  .agent .actions span.ok { background: #30d158; color: #000; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; color: var(--muted); }
+  .halo { width: 62%; height: 46px; background: #000; border-radius: 0 0 22px 22px; position: absolute; top: 0; }
+  .halo::before { content: ""; position: absolute; inset: -20%; z-index: -1; border-radius: 30px; filter: blur(30px); animation: hue 6s linear infinite; background: var(--pink); }
+  @keyframes hue { 0% { background: var(--pink); } 33% { background: var(--cyan); } 66% { background: var(--orange); } 100% { background: var(--pink); } }
+
+  /* Install */
+  .steps { counter-reset: step; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 36px; }
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+  .step::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; color: #000; font-weight: 800; margin-bottom: 14px; }
+  .step h3 { margin: 0 0 6px; }
+  .step p { margin: 0; color: var(--muted); font-size: 15px; }
+  code.cmd { display: block; margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: #000; border: 1px solid var(--line); font: 13px ui-monospace, "SF Mono", Menlo, monospace; color: #e5e5ea; overflow-x: auto; white-space: nowrap; }
+  footer { margin-top: 100px; padding: 40px 0 60px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+  @media (max-width: 860px) {
+    nav .links { display: none; }
+    .grid, .steps { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 1fr; gap: 24px; margin-top: 56px; }
+    .row.flip .demo { order: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } .open, .bar-panels { opacity: 1; } }
+</style>
+</head>
+<body>
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="logo.png" alt="">Notchy</a>
+    <div class="links">
+      <a href="#fonctions">Fonctions</a>
+      <a href="#details">En détail</a>
+      <a href="#installer">Installer</a>
+      <a href="https://github.com/ByteOneDev/Notchy">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <img class="logo" src="logo.png" alt="Logo de Notchy">
+    <h1>L'encoche de ton Mac,<br><span class="grad">enfin utile.</span></h1>
+    <p class="lead">Notchy transforme l'encoche en petit centre de contrôle : ta musique, ton agenda, tes fichiers, tes modes de concentration et tes agents IA, à un geste du bout des doigts.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/ByteOneDev/Notchy/releases/latest">⬇︎ Télécharger pour Mac</a>
+      <a class="btn ghost" href="#fonctions">Découvrir</a>
+    </div>
+    <p class="meta">Gratuit · macOS 15 ou plus récent · Mac avec puce Apple · Se met à jour tout seul</p>
+
+    <div class="stage" aria-hidden="true">
+      <div class="screen">
+        <div class="menubar"></div>
+        <div class="notch">
+          <div class="compact"><span class="art"></span><span class="bars"><i></i><i></i><i></i><i></i></span></div>
+          <div class="open">
+            <div class="player">
+              <div class="cover"></div>
+              <div class="lines"><div class="line"></div><div class="line dim" style="width:60%"></div><div class="progress"><b></b></div></div>
+            </div>
+            <div class="sep"></div>
+            <div class="cal">
+              <div class="head" id="demo-date"><b>SAM.</b> 15 NOV. <span style="opacity:.4">S46</span></div>
+              <div class="week" id="demo-week"><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span class="sel">15</span><span>16</span></div>
+              <div class="event"><div class="line" style="width:80%"></div><div class="line dim" style="width:40%"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="bar-panels"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="fonctions">
+  <div class="wrap">
+    <div class="eyebrow">Tout au même endroit</div>
+    <h2>Un geste, et tout est là.</h2>
+    <p class="sub">Glisse à deux doigts vers le bas sur l'encoche pour l'ouvrir, vers le haut pour la refermer. Chaque fonction s'active ou se coupe dans les réglages : tu ne gardes que ce dont tu te sers.</p>
+    <div class="grid">
+      <div class="card"><div class="ico" style="background:#ff2d5533">🎵</div><h3>Musique</h3><p>Pochette, paroles synchronisées, visualiseur et contrôles, pour Spotify, Musique, YouTube et tout ce qui joue sur ton Mac.</p></div>
+      <div class="card"><div class="ico" style="background:#ff453a33">📅</div><h3>Calendrier</h3><p>Tes journées d'un coup d'œil, un bouton pour rejoindre Meet ou Zoom, et un sélecteur de jour au choix.</p></div>
+      <div class="card"><div class="ico" style="background:#ffd60a33">⚡️</div><h3>Activités en direct</h3><p>Volume, luminosité, écouteurs, charge, réunion qui approche, pluie, téléchargements : l'encoche s'élargit juste le temps qu'il faut.</p></div>
+      <div class="card"><div class="ico" style="background:#0a84ff33">🗂️</div><h3>Étagère et AirDrop</h3><p>Dépose des fichiers sur l'encoche, garde-les sous la main, envoie-les par AirDrop ou convertis-les.</p></div>
+      <div class="card"><div class="ico" style="background:#bf5af233">🌙</div><h3>Modes</h3><p>Focus pendant un Pomodoro, Réunion pendant un appel : sons coupés, musique en pause et sites bloqués dans ton navigateur.</p></div>
+      <div class="card"><div class="ico" style="background:#ff9f0a33">✨</div><h3>Agents IA</h3><p>Suis Claude Code, autorise ses commandes depuis l'encoche et garde un œil sur tes limites d'usage.</p></div>
+      <div class="card"><div class="ico" style="background:#64d2ff33">🧩</div><h3>Widgets</h3><p>Choisis jusqu'à trois widgets pour l'accueil : météo, pluie, tâches, raccourcis, réseau, modes…</p></div>
+      <div class="card"><div class="ico" style="background:#30d15833">⏱️</div><h3>Minuteur et Pomodoro</h3><p>Une règle graduée à faire glisser, comme l'app Horloge, et des sessions de concentration.</p></div>
+      <div class="card"><div class="ico" style="background:#ff375f33">🪞</div><h3>Miroir et prompteur</h3><p>Vérifie ta tête avant un appel, et lis ton texte sous la caméra, qui défile même au rythme de ta voix.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="details">
+  <div class="wrap">
+    <div class="row">
+      <div>
+        <div class="eyebrow">Activités en direct</div>
+        <h2>Les infos viennent à toi.</h2>
+        <p class="sub">Monte le son, branche tes AirPods ou ton chargeur : l'encoche fermée s'élargit un instant pour te le montrer, puis se fait oublier.</p>
+      </div>
+      <div class="demo"><div class="pill hud">🔊<span class="level"><b></b></span></div></div>
+    </div>
+
+    <div class="row flip">
+      <div>
+        <div class="eyebrow">Ambiance</div>
+        <h2>Une lumière qui suit ta musique.</h2>
+        <p class="sub">Pendant la lecture, un halo doux de la couleur de la pochette se diffuse autour de l'encoche. Quatre styles au choix pour l'encoche elle-même, dont Liquid Glass.</p>
+      </div>
+      <div class="demo"><div class="halo"></div></div>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="eyebrow">Concentration</div>
+        <h2>Les distractions restent dehors.</h2>
+        <p class="sub">Coche des catégories (réseaux sociaux, vidéo, actualités…) ou tape le début d'un site : pendant le mode, il est bloqué dans Safari, Chrome, Brave et Arc. À la fin, l'onglet revient tout seul, la vidéo en pause.</p>
+      </div>
+      <div class="demo">
+        <div class="pill" style="width:44%">🧠<span style="color:#bf5af2">Focus</span></div>
+        <div class="browser"><div class="dots"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+          <div class="page"><div class="yt"></div><div class="blocked">🌙<br>youtube.com est bloqué</div></div></div>
+      </div>
+    </div>
+
+    <div class="row flip">
+      <div>
+        <div class="eyebrow">Agents IA</div>
+        <h2>Claude Code te demande ? Réponds d'un clic.</h2>
+        <p class="sub">Notchy affiche ce que fait Claude Code, te prévient quand il a fini, et te laisse autoriser ou refuser ses commandes sans quitter ce que tu fais.</p>
+      </div>
+      <div class="demo">
+        <div class="agent">
+          <div class="bubble"><div><b style="color:#ff9f45">✦ Claude</b> veut lancer</div><div class="mono">npm test</div>
+            <div class="actions"><span class="ok">Autoriser</span><span>Refuser</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="eyebrow">Minuteur</div>
+        <h2>Fais glisser, c'est réglé.</h2>
+        <p class="sub">Une règle graduée et un petit retour haptique à chaque minute, avec les couleurs de l'app Horloge. Le calendrier se feuillette de la même façon.</p>
+      </div>
+      <div class="demo"><div class="timer-big">25:00</div><div class="ruler"><div class="ticks">
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div><div class="needle"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="installer">
+  <div class="wrap">
+    <div class="eyebrow">Installer</div>
+    <h2>Prêt en une minute.</h2>
+    <p class="sub">Notchy est signé mais pas notarisé par Apple : il faut lever une fois la quarantaine de macOS. Ensuite, il se met à jour tout seul.</p>
+    <div class="steps">
+      <div class="step"><h3>Télécharger</h3><p>Prends le DMG de la dernière version sur GitHub.</p>
+        <a class="btn primary" style="margin-top:14px" href="https://github.com/ByteOneDev/Notchy/releases/latest">Dernière version</a></div>
+      <div class="step"><h3>Glisser dans Applications</h3><p>Ouvre le DMG et dépose Notchy dans le dossier Applications.</p></div>
+      <div class="step"><h3>Autoriser et lancer</h3><p>Dans le Terminal, une seule fois :</p><code class="cmd">xattr -dr com.apple.quarantine /Applications/Notchy.app</code></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Notchy · une app pour l'encoche du Mac</span>
+    <span><a href="https://github.com/ByteOneDev/Notchy">Code source sur GitHub</a> · <a href="https://github.com/ByteOneDev/Notchy/releases">Versions</a></span>
+  </div>
+</footer>
+<script>
+  // The demo's calendar shows today, like the real one.
+  (function () {
+    const today = new Date();
+    const day = d => d.toLocaleDateString('fr-FR', { weekday: 'short' }).toUpperCase();
+    const month = today.toLocaleDateString('fr-FR', { month: 'short' }).toUpperCase();
+    const thursday = new Date(today); thursday.setDate(today.getDate() + 3 - (today.getDay() + 6) % 7);
+    const firstThursday = new Date(thursday.getFullYear(), 0, 4);
+    const week = 1 + Math.round(((thursday - firstThursday) / 864e5 - 3 + (firstThursday.getDay() + 6) % 7) / 7);
+    document.getElementById('demo-date').innerHTML = '<b>' + day(today) + '</b> ' + today.getDate() + ' ' + month + ' <span style="opacity:.4">S' + week + '</span>';
+    const monday = new Date(today); monday.setDate(today.getDate() - (today.getDay() + 6) % 7);
+    let cells = '';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday); d.setDate(monday.getDate() + i);
+      cells += '<span' + (d.toDateString() === today.toDateString() ? ' class="sel"' : '') + '>' + d.getDate() + '</span>';
+    }
+    document.getElementById('demo-week').innerHTML = cells;
+  })();
+</script>
+</body>
+</html>

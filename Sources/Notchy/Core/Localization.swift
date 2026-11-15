@@ -14,6 +14,12 @@ func L(_ key: String) -> String {
     return Loc.language == .fr ? entry.fr : entry.en
 }
 
+/// Localized string for `key`, or nil when there is none (optional explanations).
+func Lif(_ key: String) -> String? {
+    guard let entry = Strings.table[key] else { return nil }
+    return Loc.language == .fr ? entry.fr : entry.en
+}
+
 /// Localized format string, e.g. `L("battery.percent", 42)`.
 func L(_ key: String, _ args: CVarArg...) -> String {
     String(format: L(key), locale: Loc.locale, arguments: args)

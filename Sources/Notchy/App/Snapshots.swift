@@ -26,6 +26,7 @@ enum Snapshots {
     private static func render(to folder: URL) {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         checkLogic(to: folder.appendingPathComponent("logic.txt"))
+        renderSettings(to: folder)
         for scene in TourScene.allCases {
             save(TourPageSnapshot(scene: scene).environment(\.colorScheme, .dark),
                  to: folder.appendingPathComponent("tour-\(scene.rawValue)-\(scene).png"))
@@ -70,9 +71,31 @@ enum Snapshots {
         }
     }
 
+    /// The real settings window, drawn off screen with its native controls.
+    private static func renderSettings(to folder: URL) {
+        for pane in [SettingsPane.features, .appearance, .general] {
+            let selection = SettingsSelection()
+            selection.pane = pane
+            let window = NSWindow(contentRect: NSRect(x: -4000, y: -4000, width: 760, height: 720), styleMask: [.titled], backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: .darkAqua)
+            let host = NSHostingView(rootView: SettingsView(selection: selection))
+            window.contentView = host
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: .now + 0.6)
+            guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { continue }
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: folder.appendingPathComponent("settings-\(pane.rawValue).png"))
+            window.close()
+        }
+    }
+
     /// Site completion, parsing and matching, written out to be read.
     private static func checkLogic(to url: URL) {
         var lines: [String] = []
+        for query in ["plein ecran", "couleur", "pomodoro", "bloquer", "lumiere", "batterie", "zzz"] {
+            let found = SettingsSearch.results(for: query).prefix(5).map { "\($0.title) (\($0.pane.title))" }
+            lines.append("search \(query) → \(found.joined(separator: " · "))")
+        }
         for query in ["you", "twi", "tube", "insta", "net", "lequ", "steam"] {
             lines.append("suggest \(query) → \(SiteCatalog.suggestions(for: query).joined(separator: ", "))")
         }

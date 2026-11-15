@@ -104,6 +104,8 @@ final class AppSettings: ObservableObject {
     // Widgets
     @Published var calendarEnabled: Bool { didSet { save(calendarEnabled, "calendarEnabled") } }
     @Published var dayPickerStyle: DayPickerStyle { didSet { save(dayPickerStyle.rawValue, "dayPickerStyle") } }
+    /// "#RRGGBB", or empty for each style's own color (white bubble, red disc and needle).
+    @Published var dayPickerColorHex: String { didSet { save(dayPickerColorHex, "dayPickerColorHex") } }
     @Published var weatherEnabled: Bool { didSet { save(weatherEnabled, "weatherEnabled") } }
     @Published var weatherUsesLocation: Bool { didSet { save(weatherUsesLocation, "weatherUsesLocation") } }
     @Published var weatherCity: String { didSet { save(weatherCity, "weatherCity") } }
@@ -217,6 +219,7 @@ final class AppSettings: ObservableObject {
         meetingActivity = value("meetingActivity", true)
         calendarEnabled = value("calendarEnabled", true)
         dayPickerStyle = DayPickerStyle(rawValue: value("dayPickerStyle", "notchNook")) ?? .notchNook
+        dayPickerColorHex = value("dayPickerColorHex", "")
         weatherEnabled = value("weatherEnabled", true)
         weatherUsesLocation = value("weatherUsesLocation", true)
         weatherCity = value("weatherCity", "Paris")

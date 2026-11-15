@@ -4,6 +4,8 @@
 
 Une app de notch native pour macOS (Swift + SwiftUI), dans l'esprit d'Alcove et NotchNook Pro.
 
+**Site : [byteonedev.github.io/Notchy](https://byteonedev.github.io/Notchy/)**
+
 ## Panneaux
 
 Sous le notch ouvert, une barre flottante donne accès aux panneaux : **Nook** (vue d'ensemble), **Musique**, **Calendrier**, **Étagère**, **Prompteur**, **Agents IA**, **Minuteur** et **Miroir**. Chacun s'active ou se désactive dans les réglages.

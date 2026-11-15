@@ -159,13 +159,24 @@ final class SiteBlocker {
       <p>{{subtitle}}</p>
     </div>
     <script>
-      // Back to the page once the mode is over.
+      // Back to the page once the mode is over, without replaying what was playing.
       const card = document.querySelector('.card');
+      function restore() {
+        // A tab in the background waits until it is looked at: no videos starting all at once.
+        if (document.visibilityState !== 'visible') {
+          document.addEventListener('visibilitychange', restore, { once: true });
+          return;
+        }
+        // Going back brings the page back as it was when the browser kept it (a video stays
+        // paused); otherwise, or if there is nothing to go back to, load it again.
+        if (history.length > 1) history.back();
+        setTimeout(() => { if (card.dataset.from) location.replace(card.dataset.from); }, 1500);
+      }
       async function poll() {
         try {
           const r = await fetch('/blocked/state?site=' + encodeURIComponent(card.dataset.site));
           const s = await r.json();
-          if (!s.blocked && card.dataset.from) { location.replace(card.dataset.from); return; }
+          if (!s.blocked) { restore(); return; }
         } catch (e) {}
         setTimeout(poll, 3000);
       }

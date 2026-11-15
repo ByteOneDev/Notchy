@@ -39,6 +39,14 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
 
     var title: String { L("settings.\(rawValue)") }
+    var summary: String { L("settings.pane.\(rawValue).desc") }
+
+    /// The sidebar, in three groups.
+    static let groups: [(title: String, panes: [SettingsPane])] = [
+        ("settings.group.notch", [.general, .features, .appearance]),
+        ("settings.group.content", [.media, .activities, .widgets, .modes, .agents]),
+        ("settings.group.system", [.permissions, .about]),
+    ]
 }
 
 @MainActor
@@ -78,21 +86,53 @@ final class SettingsSelection: ObservableObject {
 struct SettingsView: View {
     @ObservedObject var selection: SettingsSelection
     @ObservedObject private var settings = AppSettings.shared
+    @State private var query = ""
+
+    private func paneIcon(_ pane: SettingsPane, size: CGFloat = 22) -> some View {
+        Image(systemName: pane.icon)
+            .font(.system(size: size / 2, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(RoundedRectangle(cornerRadius: size * 0.27, style: .continuous).fill(pane.color.gradient))
+    }
+
+    private func paneRow(_ pane: SettingsPane) -> some View {
+        Label { Text(pane.title) } icon: { paneIcon(pane) }
+    }
 
     var body: some View {
         NavigationSplitView {
-            List(SettingsPane.allCases, selection: Binding(get: { selection.pane }, set: { if let p = $0 { selection.pane = p } })) { pane in
-                Label {
-                    Text(pane.title)
-                } icon: {
-                    Image(systemName: pane.icon)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 22, height: 22)
-                        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(pane.color.gradient))
+            List(selection: Binding(get: { query.isEmpty ? selection.pane : nil }, set: { if let p = $0 { selection.pane = p } })) {
+                if query.isEmpty {
+                    ForEach(SettingsPane.groups, id: \.title) { group in
+                        Section(L(group.title)) {
+                            ForEach(group.panes) { pane in paneRow(pane).tag(pane) }
+                        }
+                    }
+                } else {
+                    let results = SettingsSearch.results(for: query)
+                    if results.isEmpty {
+                        Text(L("settings.search.none")).foregroundStyle(.secondary)
+                    }
+                    ForEach(results) { result in
+                        Button {
+                            selection.pane = result.pane
+                            query = ""
+                        } label: {
+                            HStack(spacing: 8) {
+                                paneIcon(result.pane, size: 18)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(result.title).lineLimit(2)
+                                    Text(result.pane.title).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .tag(pane)
             }
+            .searchable(text: $query, placement: .sidebar, prompt: L("settings.search"))
             .safeAreaInset(edge: .top) {
                 HStack(spacing: 10) {
                     Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 38, height: 38)
@@ -109,6 +149,17 @@ struct SettingsView: View {
             .navigationSplitViewColumnWidth(200)
         } detail: {
             Form {
+                Section {
+                    HStack(spacing: 12) {
+                        paneIcon(selection.pane, size: 36)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(selection.pane.title).font(.title3.weight(.semibold))
+                            Text(selection.pane.summary).font(.callout).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
                 switch selection.pane {
                 case .general: GeneralPane()
                 case .features: FeaturesPane()
@@ -206,6 +257,15 @@ private struct AppearancePane: View {
                 ForEach(DayPickerStyle.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
+            HStack {
+                ColorPicker(L("settings.dayPicker.color"), selection: Binding(
+                    get: { Color(hex: settings.dayPickerColorHex) ?? (settings.dayPickerStyle == .carousel ? .white : .red) },
+                    set: { settings.dayPickerColorHex = $0.hex }
+                ), supportsOpacity: false)
+                if !settings.dayPickerColorHex.isEmpty {
+                    Button(L("settings.dayPicker.color.reset")) { settings.dayPickerColorHex = "" }
+                }
+            }
         } header: {
             Text(L("settings.dayPicker.section"))
         } footer: {

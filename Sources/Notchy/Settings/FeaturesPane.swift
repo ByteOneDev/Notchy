@@ -21,7 +21,7 @@ struct FeaturesPane: View {
             ForEach(HomeWidget.allCases) { widget in
                 Toggle(isOn: Binding(get: { settings.homeWidgets.contains(widget.rawValue) },
                                      set: { settings.setHomeWidget(widget, shown: $0) })) {
-                    label(widget.icon, widget.color, widget.title)
+                    SettingsIconLabel(icon: widget.icon, color: widget.color, text: widget.title, detail: Lif("home.widget.\(widget.rawValue).desc"))
                 }
                 .disabled(!settings.homeWidgets.contains(widget.rawValue) && settings.homeWidgets.count >= HomeWidget.maxShown)
             }
@@ -64,7 +64,8 @@ struct FeaturesPane: View {
             Picker(selection: $settings.fullscreenBehavior) {
                 ForEach(FullscreenBehavior.allCases) { Text($0.title).tag($0) }
             } label: {
-                label("arrow.up.left.and.arrow.down.right", .gray, L("settings.fullscreen"))
+                SettingsIconLabel(icon: "arrow.up.left.and.arrow.down.right", color: .gray, text: L("settings.fullscreen"),
+                                  detail: Lif("settings.fullscreen.desc"))
             }
             row("eye.slash.fill", .gray, "features.hideFromCapture", $settings.hideFromScreenCapture)
             row("cursorarrow.motionlines", .gray, "features.hover", $settings.openOnHover)
@@ -77,11 +78,7 @@ struct FeaturesPane: View {
     }
 
     private func row(_ icon: String, _ color: Color, _ key: String, _ isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) { label(icon, color, L(key)) }
-    }
-
-    private func label(_ icon: String, _ color: Color, _ text: String) -> some View {
-        SettingsIconLabel(icon: icon, color: color, text: text)
+        Toggle(isOn: isOn) { SettingsIconLabel(icon: icon, color: color, text: L(key), detail: Lif(key + ".desc")) }
     }
 }
 
@@ -90,6 +87,8 @@ struct SettingsIconLabel: View {
     let icon: String
     let color: Color
     let text: String
+    /// One line under the title saying what it does.
+    var detail: String?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -98,7 +97,12 @@ struct SettingsIconLabel: View {
                 .foregroundStyle(.white)
                 .frame(width: 22, height: 22)
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(color.gradient))
-            Text(text)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(text)
+                if let detail {
+                    Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
     }
 }

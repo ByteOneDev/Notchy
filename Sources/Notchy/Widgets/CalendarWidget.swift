@@ -65,6 +65,18 @@ struct CalendarWidget: View {
         }
     }
 
+    /// The highlight color chosen in the settings, or the style's own.
+    private func accent(_ standard: Color) -> Color {
+        Color(hex: settings.dayPickerColorHex) ?? standard
+    }
+
+    /// Text on the highlight: dark on a light color, white on a dark one.
+    private func onAccent(_ standard: Color) -> Color {
+        guard let rgb = NSColor(accent(standard)).usingColorSpace(.sRGB) else { return .black }
+        let luminance = 0.299 * rgb.redComponent + 0.587 * rgb.greenComponent + 0.114 * rgb.blueComponent
+        return luminance > 0.6 ? .black : .white
+    }
+
     private var todayButton: some View {
         Button(L("calendar.today")) {
             withAnimation(.daySlide) { service.selectedDay = calendar.startOfDay(for: .now) }
@@ -112,13 +124,13 @@ struct CalendarWidget: View {
                         .foregroundStyle(.white.opacity(0.4))
                     ZStack {
                         if isSelected {
-                            Circle().fill(Color.red).matchedGeometryEffect(id: "selectedDay", in: selection)
+                            Circle().fill(accent(.red)).matchedGeometryEffect(id: "selectedDay", in: selection)
                         } else if isToday {
                             Circle().stroke(Color.red.opacity(0.7), lineWidth: 1.2)
                         }
                         Text("\(calendar.component(.day, from: day))")
                             .font(.system(size: 12.5, weight: .semibold).monospacedDigit())
-                            .foregroundStyle(isSelected ? .white : isToday ? .red : .white.opacity(isWeekend ? 0.45 : 0.9))
+                            .foregroundStyle(isSelected ? onAccent(.red) : isToday ? .red : .white.opacity(isWeekend ? 0.45 : 0.9))
                     }
                     .frame(width: 25, height: 25)
                     Circle().fill(service.events(on: day).isEmpty ? Color.clear : Color.white.opacity(0.45))
@@ -169,7 +181,7 @@ struct CalendarWidget: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(selected.formatted(.dateTime.weekday(.wide).locale(settings.language.locale)).uppercased())
                 .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.red)
+                .foregroundStyle(accent(.red))
             Text("\(calendar.component(.day, from: selected))")
                 .font(.system(size: 46, weight: .semibold).monospacedDigit())
                 .contentTransition(.numericText(countsDown: !service.movedForward))
@@ -177,9 +189,19 @@ struct CalendarWidget: View {
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
             Spacer(minLength: 4)
-            todayButton
+            // A label, not a button: it says the page shows today.
+            if calendar.isDateInToday(selected) {
+                Text(L("calendar.today")).font(.system(size: 11, weight: .semibold)).foregroundStyle(accent(.red))
+            }
         }
         .frame(width: 92, alignment: .leading)
+        .contentShape(Rectangle())
+        // Back to today with a click on the page.
+        .onTapGesture {
+            withAnimation(.daySlide) { service.selectedDay = calendar.startOfDay(for: .now) }
+            service.reload()
+        }
+        .help(L("calendar.backToToday"))
         .animation(.daySlide, value: selected)
     }
 
@@ -192,9 +214,9 @@ struct CalendarWidget: View {
             let reach = Int(center / cell) + 2
             ZStack {
                 RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(Color.white)
+                    .fill(accent(.white))
                     .frame(width: 34, height: 42)
-                    .shadow(color: .white.opacity(0.25), radius: 6)
+                    .shadow(color: accent(.white).opacity(0.3), radius: 6)
                     .position(x: center, y: 21)
                 // Identified by date, so the days shared before and after a change slide over.
                 let days = (-reach...reach).compactMap { calendar.date(byAdding: .day, value: $0, to: selected) }
@@ -202,7 +224,8 @@ struct CalendarWidget: View {
                     let offset = calendar.dateComponents([.day], from: selected, to: day).day ?? 0
                     let shifted = Double(offset) - dragDays
                     let distance = abs(shifted)
-                    DayCell(day: day, calendar: calendar, selected: distance < 0.5, hasEvents: !service.events(on: day).isEmpty)
+                    DayCell(day: day, calendar: calendar, selected: distance < 0.5, hasEvents: !service.events(on: day).isEmpty,
+                            selectedText: onAccent(.white))
                         .scaleEffect(max(0.78, 1 - distance * 0.05))
                         .opacity(max(0.25, 1 - distance * 0.13))
                         .position(x: center + CGFloat(shifted) * cell, y: 21)
@@ -281,7 +304,7 @@ struct CalendarWidget: View {
                     Image(systemName: "arrowtriangle.down.fill").font(.system(size: 7))
                     Capsule().frame(width: 2.5, height: 18)
                 }
-                .foregroundStyle(.red)
+                .foregroundStyle(accent(.red))
                 .position(x: center, y: 14)
                 .allowsHitTesting(false)
             }
@@ -321,17 +344,19 @@ private struct DayCell: View {
     let calendar: Calendar
     let selected: Bool
     let hasEvents: Bool
+    /// Text color on the highlight.
+    var selectedText: Color = .black
 
     var body: some View {
         let isToday = calendar.isDateInToday(day)
         VStack(spacing: 2) {
             Text(day.formatted(.dateTime.weekday(.narrow).locale(calendar.locale ?? .current)))
                 .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(selected ? .black.opacity(0.6) : .white.opacity(0.4))
+                .foregroundStyle(selected ? selectedText.opacity(0.6) : .white.opacity(0.4))
             Text("\(calendar.component(.day, from: day))")
                 .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                .foregroundStyle(selected ? .black : isToday ? .red : .white)
-            Circle().fill(hasEvents ? (selected ? Color.black.opacity(0.5) : Color.white.opacity(0.5)) : .clear)
+                .foregroundStyle(selected ? selectedText : isToday ? .red : .white)
+            Circle().fill(hasEvents ? (selected ? selectedText.opacity(0.5) : Color.white.opacity(0.5)) : .clear)
                 .frame(width: 3, height: 3)
         }
         .frame(width: 32, height: 40)
