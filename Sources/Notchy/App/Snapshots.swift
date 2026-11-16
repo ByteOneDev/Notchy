@@ -27,6 +27,21 @@ enum Snapshots {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         checkLogic(to: folder.appendingPathComponent("logic.txt"))
         renderSettings(to: folder)
+        // The volume HUD in the closed notch, at a few levels.
+        if let screen = NSScreen.screens.first(where: \.isBuiltIn) ?? NSScreen.main {
+            let notch = screen.notchSize
+            for level: Float in [0.25, 0.5, 0.8125] {
+                let layout = CompactLayout.make(activity: LiveActivity(kind: .volume(level: level, muted: false), duration: 2),
+                                                media: NowPlayingService.shared, locked: false, justUnlocked: false,
+                                                pomodoro: PomodoroTimer.shared, timer: QuickTimer.shared, notchHeight: notch.height)
+                let width = notch.width + layout.leftWidth + layout.rightWidth
+                let view = ClosedNotchView(layout: layout, notchSize: notch)
+                    .frame(width: width, height: notch.height)
+                    .background(Color.black)
+                    .padding(10).background(Color(white: 0.3))
+                save(view, to: folder.appendingPathComponent("hud-volume-\(Int(level * 100)).png"))
+            }
+        }
         for scene in TourScene.allCases {
             save(TourPageSnapshot(scene: scene).environment(\.colorScheme, .dark),
                  to: folder.appendingPathComponent("tour-\(scene.rawValue)-\(scene).png"))

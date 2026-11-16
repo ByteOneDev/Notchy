@@ -347,21 +347,37 @@ struct LevelBar: View {
     let color: Color
 
     var body: some View {
+        // The bar is drawn from the number shown, so the two always agree.
+        let percent = Int((min(1, max(0, level)) * 100).rounded())
         HStack(spacing: 6) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.18))
-                    Capsule().fill(color).frame(width: max(4, geo.size.width * level))
-                }
-            }
-            .frame(height: 5)
-            Text("\(Int((level * 100).rounded()))")
+            LevelShape(level: Double(percent) / 100)
+                .fill(color)
+                .background(Capsule().fill(Color.white.opacity(0.18)))
+                .frame(height: 5)
+                // Only from one level to the next: when the HUD appears, the bar is already there.
+                .animation(.snappy(duration: 0.15), value: percent)
+            Text("\(percent)")
                 .font(.system(size: 11, weight: .semibold).monospacedDigit())
                 .foregroundStyle(.white)
                 .frame(width: 24, alignment: .trailing)
         }
         .padding(.trailing, 6)
-        .animation(.easeOut(duration: 0.12), value: level)
+    }
+}
+
+/// The filled part of a level bar: a capsule as wide as the level, drawn from the space it
+/// is given (no layout pass to wait for, unlike a GeometryReader).
+struct LevelShape: Shape {
+    var level: Double
+
+    var animatableData: Double {
+        get { level }
+        set { level = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let width = max(rect.height, rect.width * level)
+        return Capsule().path(in: CGRect(x: rect.minX, y: rect.minY, width: width, height: rect.height))
     }
 }
 

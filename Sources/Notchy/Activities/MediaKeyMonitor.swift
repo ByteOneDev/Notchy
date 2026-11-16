@@ -72,12 +72,14 @@ final class MediaKeyMonitor {
         case .soundUp, .soundDown, .mute:
             guard settings.replaceVolumeHUD, VolumeController.isAvailable else { return false }
             guard isDown else { return true }
+            var shownVolume: Float?
             switch key {
             case .mute: VolumeController.toggleMute()
-            case .soundUp: VolumeController.change(by: step)
-            default: VolumeController.change(by: -step)
+            case .soundUp: shownVolume = VolumeController.change(by: step)
+            default: shownVolume = VolumeController.change(by: -step)
             }
-            LiveActivityCenter.shared.show(.volume(level: VolumeController.volume, muted: VolumeController.isMuted), duration: 1.6)
+            // The value just set: some devices (Bluetooth headphones) only report it a moment later.
+            LiveActivityCenter.shared.show(.volume(level: shownVolume ?? VolumeController.volume, muted: VolumeController.isMuted), duration: 1.6)
             return true
         case .brightnessUp, .brightnessDown:
             guard settings.replaceBrightnessHUD, BrightnessController.isAvailable else { return false }
@@ -136,13 +138,15 @@ enum VolumeController {
 
     static func toggleMute() { setMuted(!isMuted) }
 
-    static func change(by delta: Float) {
+    @discardableResult
+    static func change(by delta: Float) -> Float {
         // Snap to the step grid so 16 presses always go from 0 to 100 %.
         let steps = (1 / abs(delta)).rounded()
         var value = Float32(min(1, max(0, ((volume * steps).rounded() + (delta > 0 ? 1 : -1)) / steps)))
         AudioObjectSetPropertyData(device, &volumeAddress, 0, nil, UInt32(MemoryLayout<Float32>.size), &value)
         if isMuted, delta > 0 { setMuted(false) }
         if value == 0 { setMuted(true) }
+        return value
     }
 }
 
