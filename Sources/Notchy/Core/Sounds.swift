@@ -30,7 +30,7 @@ enum Sounds {
     static func effect(for kind: LiveActivityKind) -> Effect? {
         switch kind {
         case .volume, .brightness, .keyboard, .capsLock, .conversion, .pomodoro, .timerDone, .download, .shortcut: nil
-        case .lowBattery, .deviceBattery, .meeting, .rain, .usageWarning, .agentAttention: .alert
+        case .lowBattery, .deviceBattery, .meeting, .rain, .usageWarning, .agentAttention, .strictLock: .alert
         case .agentDone, .update: .activity
         case .battery, .bluetooth, .camera, .microphone, .airDrop, .display, .focus, .network, .mode: .activity
         }

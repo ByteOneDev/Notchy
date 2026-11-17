@@ -137,6 +137,7 @@ enum SettingsSearch {
         (.modes, "modes.startShortcut"),
         (.modes, "modes.endShortcut"),
         (.modes, "modes.blocking"),
+        (.modes, "modes.strict"),
         (.modes, "modes.addSite"),
     ]
 

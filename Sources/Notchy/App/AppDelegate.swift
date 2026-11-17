@@ -44,6 +44,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NotchManager.shared.start()
         Snapshots.runIfRequested()
 
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willPowerOffNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.poweringOff = true }
+        }
         AppSettings.shared.$showMenuBarIcon
             .sink { [weak self] show in self?.setStatusItemVisible(show) }
             .store(in: &cancellables)
@@ -60,6 +63,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if ProcessInfo.processInfo.environment["NOTCHY_SNAPSHOTS"] == nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { TourWindowController.shared.showIfNeeded() }
         }
+    }
+
+    /// The Mac is shutting down or logging out: never stand in the way.
+    private var poweringOff = false
+
+    /// A strict mode can't be lifted by quitting (updates and shutdown still go through).
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let engine = ModeEngine.shared
+        guard engine.anyLocked, !poweringOff, !UpdateChecker.shared.isInstalling,
+              let end = engine.lockedUntil.values.filter({ $0 > .now }).max() else { return .terminateNow }
+        // Said in the notch rather than with an alert, which would freeze Notchy until clicked.
+        NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+        LiveActivityCenter.shared.show(.strictLock(until: end.formatted(date: .omitted, time: .shortened)), duration: 4)
+        return .terminateCancel
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

@@ -59,6 +59,7 @@ struct FeaturesPane: View {
         Section(L("features.system")) {
             row("lock.fill", .gray, "features.lockScreen", $settings.showOnLockScreen)
             row("moon.stars.fill", .purple, "features.modes", $settings.modesEnabled)
+                .disabled(ModeEngine.shared.anyLocked)
             row("display.2", .blue, "features.externalNotch",
                 Binding(get: { settings.notchOnExternalDisplays }, set: { settings.notchOnExternalDisplays = $0 }))
             Picker(selection: $settings.fullscreenBehavior) {

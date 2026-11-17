@@ -45,6 +45,10 @@ struct ModeRule: Codable, Identifiable, Equatable {
     /// "youtube.com/shorts"), and whole categories of sites (`SiteCatalog`).
     var blockedSites: [String] = []
     var blockedCategories: [String] = []
+    /// Strict: once started, the mode can't be switched off, edited or deleted before it ends.
+    var strict = false
+    /// How long a strict mode lasts when its trigger has no end of its own (by hand, an app, a display).
+    var strictMinutes = 60
 
     /// Every site the mode blocks, its categories' included.
     var allBlockedSites: [String] {
@@ -85,6 +89,8 @@ extension ModeRule {
         endShortcut = try c.decodeIfPresent(String.self, forKey: .endShortcut) ?? base.endShortcut
         blockedSites = try c.decodeIfPresent([String].self, forKey: .blockedSites) ?? base.blockedSites
         blockedCategories = try c.decodeIfPresent([String].self, forKey: .blockedCategories) ?? base.blockedCategories
+        strict = try c.decodeIfPresent(Bool.self, forKey: .strict) ?? base.strict
+        strictMinutes = try c.decodeIfPresent(Int.self, forKey: .strictMinutes) ?? base.strictMinutes
     }
 }
 
@@ -98,6 +104,9 @@ final class ModeEngine: ObservableObject {
     @Published private(set) var manualOn: Set<UUID> = Set((UserDefaults.standard.stringArray(forKey: "modesManualOn") ?? []).compactMap(UUID.init))
     /// Modes switched off from the widget while their trigger is true; forgotten once it isn't.
     private var manualOff: Set<UUID> = []
+    /// Strict modes and when they may end; kept across restarts so quitting doesn't lift them.
+    @Published private(set) var lockedUntil: [UUID: Date] = ModeEngine.loadLocks()
+    private var lockTimer: Timer?
     /// Modes that paused the music, to resume it when the last one ends.
     private var pausedMusic: Set<UUID> = []
     private var cancellables = Set<AnyCancellable>()
@@ -131,17 +140,80 @@ final class ModeEngine: ObservableObject {
     func evaluate() {
         let settings = AppSettings.shared
         let rules = settings.modesEnabled ? settings.modes.filter(\.enabled) : []
+        // A strict mode that has run its time is free again; a manual one also stops.
+        let expired = lockedUntil.filter { $0.value <= .now }.map(\.key)
+        if !expired.isEmpty {
+            expired.forEach { lockedUntil[$0] = nil }
+            manualOn.subtract(expired)
+            saveManualAndLocks()
+        }
+        let locked = Set(lockedUntil.keys).intersection(settings.modes.map(\.id))
         let triggered = Set(rules.filter(isTriggered).map(\.id))
         manualOff.formIntersection(triggered)
-        let now = triggered.subtracting(manualOff).union(manualOn.intersection(rules.map(\.id)))
+        // Locked modes stay on whatever happens: trigger gone, switched off, modes disabled.
+        let now = triggered.subtracting(manualOff).union(manualOn.intersection(rules.map(\.id))).union(locked)
+        scheduleLockCheck()
         guard now != active else { return }
         for id in active.subtracting(now) {
             end(settings.modes.first { $0.id == id }, id: id)
         }
-        for rule in rules where now.contains(rule.id) && !active.contains(rule.id) {
+        for rule in settings.modes where now.contains(rule.id) && !active.contains(rule.id) {
             begin(rule)
         }
         active = now
+    }
+
+    // MARK: Strict modes
+
+    func isLocked(_ id: UUID) -> Bool { (lockedUntil[id] ?? .distantPast) > .now }
+
+    /// A strict mode is on: the modes can't be switched off as a whole either.
+    var anyLocked: Bool { lockedUntil.values.contains { $0 > .now } }
+
+    /// When a strict mode that starts now ends: with its trigger when that has an end, else
+    /// after its own duration.
+    private func lockEnd(for rule: ModeRule) -> Date {
+        let now = Date.now
+        let fallback = now.addingTimeInterval(TimeInterval(max(1, rule.strictMinutes) * 60))
+        switch rule.trigger {
+        case .pomodoro:
+            let pomodoro = PomodoroTimer.shared
+            return pomodoro.isActive && pomodoro.phase == .focus ? now.addingTimeInterval(pomodoro.remaining) : fallback
+        case .meeting:
+            return CalendarService.shared.events.first { event in
+                !event.isAllDay && event.meetingURL != nil && event.start.addingTimeInterval(-120) <= now && event.end > now
+            }?.end ?? fallback
+        case .schedule:
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: now)
+            var end = calendar.date(byAdding: .minute, value: rule.endMinutes, to: today) ?? fallback
+            if end <= now { end = calendar.date(byAdding: .day, value: 1, to: end) ?? fallback }
+            return end
+        case .app, .externalDisplay, .manual:
+            return fallback
+        }
+    }
+
+    /// Re-check right when the next lock ends, not at the next 20-second tick.
+    private func scheduleLockCheck() {
+        lockTimer?.invalidate()
+        guard let next = lockedUntil.values.filter({ $0 > .now }).min() else { return }
+        lockTimer = Timer.scheduledTimer(withTimeInterval: next.timeIntervalSinceNow + 0.5, repeats: false) { _ in
+            MainActor.assumeIsolated { ModeEngine.shared.evaluate() }
+        }
+    }
+
+    private func saveManualAndLocks() {
+        UserDefaults.standard.set(manualOn.map(\.uuidString), forKey: "modesManualOn")
+        UserDefaults.standard.set(Dictionary(uniqueKeysWithValues: lockedUntil.map { ($0.key.uuidString, $0.value.timeIntervalSince1970) }),
+                                  forKey: "modesLockedUntil")
+    }
+
+    private static func loadLocks() -> [UUID: Date] {
+        let raw = UserDefaults.standard.dictionary(forKey: "modesLockedUntil") as? [String: Double] ?? [:]
+        return Dictionary(uniqueKeysWithValues: raw.compactMap { key, value in
+            UUID(uuidString: key).map { ($0, Date(timeIntervalSince1970: value)) }
+        })
     }
 
     private func isTriggered(_ rule: ModeRule) -> Bool {
@@ -175,8 +247,13 @@ final class ModeEngine: ObservableObject {
         }
     }
 
-    /// From the widget: on if it is off, off if it is on, whatever its trigger says.
+    /// From the widget: on if it is off, off if it is on, whatever its trigger says. A strict
+    /// mode under way can't be switched off.
     func toggle(_ rule: ModeRule) {
+        if active.contains(rule.id), isLocked(rule.id) {
+            NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+            return
+        }
         Haptics.tap()
         if active.contains(rule.id) {
             manualOn.remove(rule.id)
@@ -185,11 +262,15 @@ final class ModeEngine: ObservableObject {
             manualOff.remove(rule.id)
             if !isTriggered(rule) { manualOn.insert(rule.id) }
         }
-        UserDefaults.standard.set(manualOn.map(\.uuidString), forKey: "modesManualOn")
+        saveManualAndLocks()
         evaluate()
     }
 
     private func begin(_ rule: ModeRule) {
+        if rule.strict, lockedUntil[rule.id] == nil {
+            lockedUntil[rule.id] = lockEnd(for: rule)
+            saveManualAndLocks()
+        }
         LiveActivityCenter.shared.show(.mode(name: rule.name, symbol: rule.icon, on: true), duration: 2.5)
         let media = NowPlayingService.shared
         if rule.pauseMusic, media.track?.isPlaying == true {

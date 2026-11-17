@@ -31,6 +31,7 @@ enum LiveActivityKind: Equatable {
     case network(name: String, symbol: String, connected: Bool)
     case mode(name: String, symbol: String, on: Bool)
     case shortcut(name: String, icon: String, failed: Bool)
+    case strictLock(until: String)
 
     /// Activities of the same group replace each other instead of queueing (volume ticks…).
     var group: String {
@@ -55,6 +56,7 @@ enum LiveActivityKind: Equatable {
         case .network: "network"
         case .mode: "mode"
         case .shortcut: "shortcut"
+        case .strictLock: "strict"
         }
     }
 
@@ -62,7 +64,7 @@ enum LiveActivityKind: Equatable {
     var passesSilence: Bool {
         switch self {
         case .volume, .brightness, .keyboard, .capsLock, .lowBattery, .meeting, .conversion, .pomodoro, .timerDone,
-             .airDrop, .agentAttention, .usageWarning, .download, .mode, .shortcut: true
+             .airDrop, .agentAttention, .usageWarning, .download, .mode, .shortcut, .strictLock: true
         case .battery, .bluetooth, .camera, .microphone, .deviceBattery, .display, .focus, .rain, .agentDone,
              .update, .network: false
         }

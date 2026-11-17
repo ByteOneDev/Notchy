@@ -10,6 +10,8 @@ struct ModesPane: View {
     var body: some View {
         Section {
             Toggle(L("features.modes"), isOn: $settings.modesEnabled)
+                // A strict mode under way can't be lifted by switching every mode off.
+                .disabled(engine.anyLocked)
         } footer: {
             Text(L("modes.footer")).font(.caption).foregroundStyle(.secondary)
         }
@@ -24,12 +26,18 @@ struct ModesPane: View {
                         if engine.active.contains(mode.id) {
                             Text(L("modes.active")).font(.caption.weight(.semibold)).foregroundStyle(.purple)
                         }
+                        if mode.strict { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.orange) }
                         Spacer()
                         Toggle("", isOn: $mode.enabled).labelsHidden()
                     }
                 }
+                if let until = engine.lockedUntil[mode.id], until > .now {
+                    Label(L("modes.strict.locked", until.formatted(date: .omitted, time: .shortened)), systemImage: "lock.fill")
+                        .font(.callout.weight(.medium)).foregroundStyle(.orange)
+                }
             }
-            .disabled(!settings.modesEnabled)
+            // Nothing in a strict mode under way can be changed: not its sites, not its switch.
+            .disabled(!settings.modesEnabled || engine.isLocked(mode.id))
         }
         Section {
             Button(L("modes.add")) {
@@ -85,6 +93,20 @@ struct ModesPane: View {
         Toggle(L("modes.silence"), isOn: mode.silence)
         Toggle(L("modes.pauseMusic"), isOn: mode.pauseMusic)
         SiteBlockingEditor(categories: mode.blockedCategories, sites: mode.blockedSites)
+        Toggle(isOn: mode.strict) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L("modes.strict"))
+                Text(L("modes.strict.hint")).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        if mode.wrappedValue.strict {
+            switch mode.wrappedValue.trigger {
+            case .pomodoro, .meeting, .schedule:
+                Text(L("modes.strict.until.\(mode.wrappedValue.trigger.rawValue)")).font(.caption).foregroundStyle(.secondary)
+            case .app, .externalDisplay, .manual:
+                Stepper(L("modes.strict.minutes", mode.wrappedValue.strictMinutes), value: mode.strictMinutes, in: 5...480, step: 5)
+            }
+        }
         shortcutPicker(L("modes.startShortcut"), mode.startShortcut)
         shortcutPicker(L("modes.endShortcut"), mode.endShortcut)
         HStack {

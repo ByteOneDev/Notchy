@@ -126,11 +126,22 @@ final class SiteBlocker {
         let from = fromURL.map { ["http", "https"].contains($0.scheme) ? $0.absoluteString : "" } ?? ""
         let html = Self.page
             .replacingOccurrences(of: "{{title}}", with: Self.escape(L("blocker.title", site)))
-            .replacingOccurrences(of: "{{subtitle}}", with: Self.escape(mode.map { L("blocker.subtitle", $0) } ?? L("blocker.ended")))
+            .replacingOccurrences(of: "{{subtitle}}", with: Self.escape(subtitle(for: site, mode: mode)))
             .replacingOccurrences(of: "{{site}}", with: Self.escape(site))
             .replacingOccurrences(of: "{{from}}", with: Self.escape(from))
             .replacingOccurrences(of: "{{lang}}", with: Loc.language.rawValue)
         return LocalServer.Response(contentType: "text/html; charset=utf-8", body: Data(html.utf8))
+    }
+
+    /// Which mode blocks the site, and until when if it is strict.
+    private func subtitle(for site: String, mode: String?) -> String {
+        guard let mode else { return L("blocker.ended") }
+        let engine = ModeEngine.shared
+        if let rule = engine.activeModes.first(where: { $0.name == mode }),
+           let until = engine.lockedUntil[rule.id], until > .now {
+            return L("blocker.strict", mode, until.formatted(date: .omitted, time: .shortened))
+        }
+        return L("blocker.subtitle", mode)
     }
 
     private static func escape(_ text: String) -> String {

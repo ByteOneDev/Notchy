@@ -658,5 +658,19 @@ enum Strings {
         "home.widget.shortcuts.desc": ("Tes Raccourcis et scripts en tuiles.", "Your Shortcuts and scripts as tiles."),
         "home.widget.modes.desc": ("Un interrupteur par mode.", "A switch per mode."),
         "home.widget.network.desc": ("IP, VPN, débit et ports ouverts.", "IP, VPN, speed and open ports."),
+
+        // Strict modes
+        "modes.strict": ("Mode strict", "Strict mode"),
+        "modes.strict.hint": ("Une fois lancé, impossible de couper ce mode, de le modifier ou de débloquer ses sites avant la fin.",
+                              "Once started, this mode can't be switched off, edited or have its sites unblocked before it ends."),
+        "modes.strict.minutes": ("Durée du verrou : %d min", "Lock duration: %d min"),
+        "modes.strict.until.pomodoro": ("Verrouillé jusqu'à la fin de la session Pomodoro, même si tu l'arrêtes.", "Locked until the Pomodoro session's end, even if you stop it."),
+        "modes.strict.until.meeting": ("Verrouillé jusqu'à la fin de l'appel prévue dans le calendrier.", "Locked until the call's end as planned in the calendar."),
+        "modes.strict.until.schedule": ("Verrouillé jusqu'à l'heure de fin du mode.", "Locked until the mode's end time."),
+        "modes.strict.locked": ("Mode strict en cours jusqu'à %@ : rien ne peut être changé avant.", "Strict mode on until %@: nothing can change before then."),
+        "modes.widget.locked": ("Strict · jusqu'à %@", "Strict · until %@"),
+        "blocker.strict": ("Le mode strict « %@ » est actif jusqu'à %@. La page reviendra toute seule à la fin.",
+                           "The strict “%@” mode is on until %@. This page will come back by itself at the end."),
+        "strict.quit.short": ("Mode strict : impossible de quitter avant", "Strict mode: can't quit before"),
     ]
 }

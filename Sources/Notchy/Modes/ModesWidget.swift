@@ -33,6 +33,7 @@ struct ModesWidget: View {
 
     private func row(_ mode: ModeRule) -> some View {
         let on = engine.active.contains(mode.id)
+        let lockEnd = engine.lockedUntil[mode.id].flatMap { $0 > .now ? $0 : nil }
         let blocked = mode.allBlockedSites.count
         return Button { withAnimation(.snappy) { engine.toggle(mode) } } label: {
             HStack(spacing: 8) {
@@ -43,17 +44,24 @@ struct ModesWidget: View {
                     .background(Circle().fill(on ? Color.purple : Color.purple.opacity(0.18)))
                 VStack(alignment: .leading, spacing: 0) {
                     Text(mode.name).font(.system(size: 12, weight: .semibold)).lineLimit(1)
-                    Text(on ? (blocked > 0 ? L("modes.widget.blocking", blocked) : L("modes.active")) : mode.trigger.title)
+                    Text(lockEnd.map { L("modes.widget.locked", $0.formatted(date: .omitted, time: .shortened)) }
+                         ?? (on ? (blocked > 0 ? L("modes.widget.blocking", blocked) : L("modes.active")) : mode.trigger.title))
                         .font(.system(size: 10)).foregroundStyle(on ? .purple : .white.opacity(0.45)).lineLimit(1)
                 }
                 Spacer(minLength: 4)
-                // A small switch, like iOS.
-                Capsule()
-                    .fill(on ? Color.purple : Color.white.opacity(0.18))
-                    .frame(width: 30, height: 18)
-                    .overlay(alignment: on ? .trailing : .leading) {
-                        Circle().fill(.white).frame(width: 14, height: 14).padding(2)
-                    }
+                if lockEnd != nil {
+                    // Strict: no switch until it ends.
+                    Image(systemName: "lock.fill").font(.system(size: 12, weight: .semibold)).foregroundStyle(.orange)
+                        .frame(width: 30, height: 18)
+                } else {
+                    // A small switch, like iOS.
+                    Capsule()
+                        .fill(on ? Color.purple : Color.white.opacity(0.18))
+                        .frame(width: 30, height: 18)
+                        .overlay(alignment: on ? .trailing : .leading) {
+                            Circle().fill(.white).frame(width: 14, height: 14).padding(2)
+                        }
+                }
             }
             .contentShape(Rectangle())
         }

@@ -306,6 +306,13 @@ struct CompactLayout {
                 Text(on ? L("focus.on") : L("focus.off")).font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(on ? .purple : .white.opacity(0.6))
             }.withBottom(name)
+        case let .strictLock(until):
+            return CompactLayout(left: side, right: 76) {
+                Image(systemName: "lock.fill").font(.system(size: 13, weight: .semibold)).foregroundStyle(.orange)
+                    .symbolEffect(.wiggle, options: .repeat(2))
+            } trailing: {
+                Text(until).font(.system(size: 11, weight: .semibold).monospacedDigit()).foregroundStyle(.orange)
+            }.withBottom(L("strict.quit.short"))
         case let .shortcut(name, icon, failed):
             return CompactLayout(left: side, right: side) {
                 Image(systemName: icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
